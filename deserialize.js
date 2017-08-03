@@ -23,11 +23,13 @@ function deserialize_mesh(arraybuffer) {
     }
 
     // edges, opposites
-    const uint_size = (num_edges >= (1 << 16))? 4 : 2;
-    let edges = new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
-    p += num_edges * uint_size;
-    let opposites = new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
-    p += num_edges * uint_size;
+    const uint_size_edges = num_vertices < (1 << 16)? 2 : 4;
+    const uint_size_opposites = num_edges < (1 << 16)? 2 : 4;
+    
+    let edges = new (uint_size_edges == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
+    p += num_edges * uint_size_edges;
+    let opposites = new (uint_size_opposites == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
+    p += num_edges * uint_size_opposites;
 
     // check
     if (p != arraybuffer.byteLength) { throw "miscalculated buffer length"; }

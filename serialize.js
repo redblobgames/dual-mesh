@@ -11,23 +11,16 @@
  * num_edges: int32
  * num_solid_edges: int32 -- e >= num_solid_edges are ghost
  * vertices: Float32Array[2*num_vertices] -- the x,y positions
- * halfedges: UIntArray[2*num_edges] -- 'edges' and 'opposites'
- *
- * UintArray = Uint16Array if num_edges < (1<<16) or Uint32Array otherwise
+ * edges: UInt{16,32}Array[num_edges] -- UInt16 if num_vertices < (1<<16)
+ * opposites: UInt{16,32}Array[num_edges] -- UInt32 if num_edges < (1<<16)
  */
 function serialize_mesh({num_boundary_vertices, num_solid_edges, vertices, edges, opposites}) {
-    // NOTE: file could be smaller sometimes if I separately chose format for 'edges'
-    // (which contains numbers < graph.vertices.length) and 'opposites' (which contains
-    // numbers < graph.edges.length). This would primarily affect the DECAKILOPOINTS
-    // data set by saving 20%. But that's the file I use most so maybe it's worth
-    // switching. The other way to make the files smaller is to use zlib compression
-    // and then use pako.js to decompress. I'd be able to save 1.5MB in DECAKILOPOINTS
-    // and pako_deflate.min.js is only 27kB.
-    const uint_size = edges.length < (1 << 16)? 2 : 4;
+    const uint_size_edges = vertices.length < (1 << 16)? 2 : 4;
+    const uint_size_opposites = edges.length < (1 << 16)? 2 : 4;
     let size_header = 4 + 4 + 4 + 4;
     let size_vertices = vertices.length * 2 * 4;
-    let size_edges = edges.length * uint_size;
-    let size_opposites = opposites.length * uint_size;
+    let size_edges = edges.length * uint_size_edges;
+    let size_opposites = opposites.length * uint_size_opposites;
     let arraybuffer = new ArrayBuffer(size_header + size_vertices + size_edges + size_opposites);
     
     let dv = new DataView(arraybuffer);
@@ -46,10 +39,10 @@ function serialize_mesh({num_boundary_vertices, num_solid_edges, vertices, edges
     }
 
     // edges, opposites
-    new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(edges);
-    p += edges.length * uint_size;
-    new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(opposites);
-    p += edges.length * uint_size;
+    new (uint_size_edges == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(edges);
+    p += edges.length * uint_size_edges;
+    new (uint_size_opposites == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(opposites);
+    p += edges.length * uint_size_opposites;
     
     // check
     if (p != arraybuffer.byteLength) { throw("miscalculated buffer length"); }
