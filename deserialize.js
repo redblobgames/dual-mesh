@@ -7,32 +7,30 @@
  */
 function deserialize_mesh(arraybuffer) {
     let dv = new DataView(arraybuffer);
+
+    // header
     let num_vertices = dv.getUint32(0);
     let num_boundary_vertices = dv.getUint32(4);
     let num_edges = dv.getUint32(8);
     let num_solid_edges = dv.getUint32(12);
-    const uint_size = (num_edges >= (1 << 16))? 4 : 2;
+
+    // vertices
     let p = 16;
     let vertices = [];
     for (let i = 0; i < num_vertices; i++) {
         vertices.push([dv.getFloat32(p), dv.getFloat32(p+4)]);
         p += 8;
     }
-    let edges = new Int32Array(num_edges);
-    let opposites = new Int32Array(num_edges);
-    for (let i = 0; i < num_edges; i++) {
-        if (uint_size == 2) {
-            edges[i] = dv.getUint16(p); p += uint_size;
-            opposites[i] = dv.getUint16(p); p += uint_size;
-        } else {
-            edges[i] = dv.getUint32(p); p += uint_size;
-            opposites[i] = dv.getUint32(p); p += uint_size;
-        }
-    }
-    if (p != arraybuffer.byteLength) {
-        throw "miscalculated buffer length";
-    }
 
+    // edges, opposites
+    const uint_size = (num_edges >= (1 << 16))? 4 : 2;
+    let edges = new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
+    p += num_edges * uint_size;
+    let opposites = new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
+    p += num_edges * uint_size;
+
+    // check
+    if (p != arraybuffer.byteLength) { throw "miscalculated buffer length"; }
     return {num_boundary_vertices, num_solid_edges, vertices, edges, opposites};
 }
 

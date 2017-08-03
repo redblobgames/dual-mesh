@@ -24,31 +24,35 @@ function serialize_mesh({num_boundary_vertices, num_solid_edges, vertices, edges
     // and then use pako.js to decompress. I'd be able to save 1.5MB in DECAKILOPOINTS
     // and pako_deflate.min.js is only 27kB.
     const uint_size = edges.length < (1 << 16)? 2 : 4;
-    let arraybuffer = new ArrayBuffer(4 + 4 + 4 + 4
-                                      + vertices.length * 2 * 4
-                                      + edges.length * 2 * uint_size);
+    let size_header = 4 + 4 + 4 + 4;
+    let size_vertices = vertices.length * 2 * 4;
+    let size_edges = edges.length * uint_size;
+    let size_opposites = opposites.length * uint_size;
+    let arraybuffer = new ArrayBuffer(size_header + size_vertices + size_edges + size_opposites);
+    
     let dv = new DataView(arraybuffer);
+
+    // header
     dv.setUint32(0, vertices.length);
     dv.setUint32(4, num_boundary_vertices);
     dv.setUint32(8, edges.length);
     dv.setUint32(12, num_solid_edges);
+
+    // vertices
     let p = 16;
     for (let i = 0; i < vertices.length; i++) {
         dv.setFloat32(p, vertices[i][0]); p += 4;
         dv.setFloat32(p, vertices[i][1]); p += 4;
     }
-    for (let i = 0; i < edges.length; i++) {
-        if (uint_size == 2) {
-            dv.setUint16(p, edges[i]); p += uint_size;
-            dv.setUint16(p, opposites[i]); p += uint_size;
-        } else {
-            dv.setUint32(p, edges[i]); p += uint_size;
-            dv.setUint32(p, opposites[i]); p += uint_size;
-        }
-    }
-    if (p != arraybuffer.byteLength) {
-        throw("miscalculated buffer length");
-    }
+
+    // edges, opposites
+    new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(edges);
+    p += edges.length * uint_size;
+    new (uint_size == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(opposites);
+    p += edges.length * uint_size;
+    
+    // check
+    if (p != arraybuffer.byteLength) { throw("miscalculated buffer length"); }
     return arraybuffer;
 }
 
