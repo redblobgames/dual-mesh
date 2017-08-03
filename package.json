@@ -2,10 +2,10 @@
     "name": "@redblobgames/triangle-mesh",
     "version": "1.0.0",
     "private": true,
-    "dependencies": {
-    },
+    "dependencies": {},
     "devDependencies": {
         "delaunator": "*",
-        "poisson-disc-sampling": "*"
-    },
+        "poisson-disk-sampling": "*",
+        "tape": "*"
+    }
 }

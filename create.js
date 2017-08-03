@@ -10,8 +10,8 @@
  */
 
 let fs = require('fs');
-let Poisson = require('poisson-disk-sampling');
-let Delaunator = require('delaunator');
+let Poisson = require('poisson-disk-sampling'); // MIT licensed
+let Delaunator = require('delaunator');        // ISC licensed
 
 function e_to_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
 
@@ -26,7 +26,7 @@ function e_to_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
  *
  * UintArray = Uint16Array if num_edges < (1<<16) or Uint32Array otherwise
  */
-function write_graph(name, graph) {
+function mesh_to_arraybuffer(graph) {
     // NOTE: file could be smaller sometimes if I separately chose format for 'edges'
     // (which contains numbers < graph.vertices.length) and 'opposites' (which contains
     // numbers < graph.edges.length). This would primarily affect the DECAKILOPOINTS
@@ -58,11 +58,15 @@ function write_graph(name, graph) {
         }
     }
     if (p != arraybuffer.byteLength) {
-        console.log("  ERROR: miscalculated buffer length");
-    } else {
-        console.log(`  Writing ${name}.graphdata:  ${graph.vertices.length} vertices,  ${graph.edges.length/3} triangles,  ${graph.edges.length} edges (${uint_size} bytes/edge),  ${p} bytes`);
-        fs.writeFileSync(name + ".graphdata", Buffer.from(arraybuffer));
+        throw("miscalculated buffer length");
     }
+    return arraybuffer;
+}
+
+function write_graph(name, graph) {
+    let arraybuffer = mesh_to_arraybuffer(graph);
+    console.log(`  Writing ${name}.graphdata:  ${graph.vertices.length} vertices,  ${graph.edges.length/3} triangles,  ${graph.edges.length} edges  ${arraybuffer.byteLength} bytes`);
+    fs.writeFileSync(name + ".graphdata", Buffer.from(arraybuffer));
 }
 
     
@@ -211,17 +215,12 @@ function generate(name, spacing) {
     
     console.timeEnd(name);
     write_graph(name, graph);
-    // if (name == 'DECAPOINTS') {
-    //     console.log(`vertices=${graph.vertices.length}, boundary=${graph.num_boundary_vertices}, edges=${graph.edges.length}, solid=${graph.num_solid_edges}`);
-    //     console.log('edges=',JSON.stringify(graph.edges));
-    //     console.log('opposites=',JSON.stringify(graph.opposites));
-    // }
 }
 
 generate('DECAPOINTS', Math.pow(10, 2.0));
-generate('HECTOPOINTS', Math.pow(10, 1.5));
-generate('KILOPOINTS', Math.pow(10, 1.0));
-generate('DECAKILOPOINTS', Math.pow(10, 0.5));
+//generate('HECTOPOINTS', Math.pow(10, 1.5));
+//generate('KILOPOINTS', Math.pow(10, 1.0));
+//generate('DECAKILOPOINTS', Math.pow(10, 0.5));
 
 // These two are big and I'm not using them right now:
 // generate('HECTOKILOPOINTS', Math.pow(10, 0.0));
