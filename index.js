@@ -2,6 +2,8 @@
 // Copyright 2017 Red Blob Games <redblobgames@gmail.com>
 // License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
 
+let deserialize_mesh = require('./deserialize');
+
 /* Represent a triangle mesh with:
  *   - Triangles (T)
  *   - Edges (E)
@@ -15,37 +17,14 @@ class TriangleMesh {
     
     constructor (arraybuffer) {
         // Decode the contents of the binary file
-        let dv = new DataView(arraybuffer);
-        this.num_vertices = dv.getUint32(0);
+        Object.assign(this, deserialize_mesh(arraybuffer));
+
+        this.num_vertices = this.vertices.length;
         this.num_solid_vertices = this.num_vertices - 1;
-        this.num_boundary_vertices = dv.getUint32(4);
-        this.num_edges = dv.getUint32(8);
-        this.num_solid_edges = dv.getUint32(12);
+        this.num_edges = this.edges.length;
         this.num_triangles = this.num_edges / 3;
         this.num_solid_triangles = this.num_solid_edges / 3;
-        const uint_size = (this.num_edges >= (1 << 16))? 4 : 2;
-        let p = 16;
-        this.vertices = [];
-        for (let i = 0; i < this.num_vertices; i++) {
-            this.vertices.push([dv.getFloat32(p), dv.getFloat32(p+4)]);
-            p += 8;
-        }
-        this.edges = new Int32Array(this.num_edges);
-        this.opposites = new Int32Array(this.num_edges);
-        for (let i = 0; i < this.num_edges; i++) {
-            if (uint_size == 2) {
-                this.edges[i] = dv.getUint16(p); p += uint_size;
-                this.opposites[i] = dv.getUint16(p); p += uint_size;
-            } else {
-                this.edges[i] = dv.getUint32(p); p += uint_size;
-                this.opposites[i] = dv.getUint32(p); p += uint_size;
-            }
-        }
-        if (p != arraybuffer.byteLength) {
-            console.log("ERROR: miscalculated buffer length");
-            return;
-        }
-
+        
         // Construct an index for finding all edges connected to a vertex
         this.starts = new Int32Array(this.num_vertices);
         for (let e = 0; e < this.edges.length; e++) {
