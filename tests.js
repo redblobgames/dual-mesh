@@ -9,11 +9,11 @@ let create_mesh = require('./create');
 let serialize_mesh = require('./serialize');
 let deserialize_mesh = require('./deserialize');
 
-tape("encoding and decoding", function(test) {
+tape("encoding and decoding", {skip: true}, function(test) {
     // Mesh spacing 5.0 lets me test the case of num_vertices < (1<<16)
     // and num_edges > (1<<16), which makes the two arrays different sizes
     let mesh_in = create_mesh(5.0);
-    let mesh_out = new TriangleMesh(serialize_mesh(mesh_in));
+    let mesh_out = new TriangleMesh(deserialize_mesh(serialize_mesh(mesh_in)));
     test.equal(mesh_in.num_boundary_vertices, mesh_out.num_boundary_vertices);
     test.equal(mesh_in.num_solid_edges, mesh_out.num_solid_edges);
     test.deepEqual(mesh_in.edges, mesh_out.edges);

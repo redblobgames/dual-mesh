@@ -2,8 +2,6 @@
 // Copyright 2017 Red Blob Games <redblobgames@gmail.com>
 // License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
 
-let deserialize_mesh = require('./deserialize');
-
 /* Represent a triangle mesh with:
  *   - Triangles (T)
  *   - Edges (E)
@@ -15,9 +13,8 @@ class TriangleMesh {
     static e_to_prev_e(e) { return (e % 3 == 0) ? e+2 : e-1; }
     static e_to_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
     
-    constructor (arraybuffer) {
-        // Decode the contents of the binary file
-        Object.assign(this, deserialize_mesh(arraybuffer));
+    constructor ({num_boundary_vertices, num_solid_edges, vertices, edges, opposites}) {
+        Object.assign(this, {num_boundary_vertices, num_solid_edges, vertices, edges, opposites});
 
         this.num_vertices = this.vertices.length;
         this.num_solid_vertices = this.num_vertices - 1;
