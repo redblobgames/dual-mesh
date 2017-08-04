@@ -73,18 +73,22 @@ function check_mesh_connectivity({vertices, edges, opposites}) {
 }
 
 
+/*
+ * Add vertices evenly along the boundary of the mesh;
+ * use a slight curve so that the Delaunay triangulation
+ * doesn't make long thing triangles along the boundary.
+ * These points also prevent the Poisson disc generator
+ * from making uneven points near the boundary.
+ */
 function add_boundary_vertices(spacing, size) {
     let N = Math.ceil(size/spacing);
-    if (N % 2 == 1) { N++; } // needs to be even so that the stagger ends at 0
     let vertices = [];
     for (let i = 0; i <= N; i++) {
-        let w = size * i / N;
-        let stagger = spacing * (i % 2);
-        vertices.push([stagger, w], [size-stagger, w]);
-        if (1 < i && i < N-1) {
-            // Corners get duplicated, skip them
-            vertices.push([w, stagger], [w, size-stagger]);
-        }
+        let t = (i + 0.5) / (N + 1);
+        let w = size * t;
+        let offset = Math.pow(t - 0.5, 2);
+        vertices.push([offset, w], [size-offset, w]);
+        vertices.push([w, offset], [w, size-offset]);
     }
     return vertices;
 }
