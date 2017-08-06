@@ -2,6 +2,8 @@
 // Copyright 2017 Red Blob Games <redblobgames@gmail.com>
 // License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
 
+'use strict';
+
 let fs = require('fs');
 let tape = require('tape');
 let TriangleMesh = require('./');
@@ -9,7 +11,7 @@ let create_mesh = require('./create');
 let serialize_mesh = require('./serialize');
 let deserialize_mesh = require('./deserialize');
 
-tape("encoding and decoding", {skip: true}, function(test) {
+tape("encoding and decoding", function(test) {
     // Mesh spacing 5.0 lets me test the case of num_vertices < (1<<16)
     // and num_edges > (1<<16), which makes the two arrays different sizes
     let mesh_in = create_mesh(5.0);

@@ -9,10 +9,12 @@
  *
  */
 
+'use strict';
+
 let Poisson = require('poisson-disk-sampling'); // MIT licensed
 let Delaunator = require('delaunator');        // ISC licensed
 
-function e_to_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
+function e_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
 
 
 function check_point_quality({vertices, edges, opposites}) {
@@ -27,10 +29,11 @@ function check_triangle_quality({vertices, edges, opposites}) {
     // check for skinny triangles
     const bad_angle_limit = 30;
     let summary = new Array(bad_angle_limit).fill(0);
+    let count = 0;
     for (let e = 0; e < edges.length; e++) {
         let v0 = edges[e],
-            v1 = edges[e_to_next_e(e)],
-            v2 = edges[e_to_next_e(e_to_next_e(e))];
+            v1 = edges[e_next_e(e)],
+            v2 = edges[e_next_e(e_next_e(e))];
         let p0 = vertices[v0],
             p1 = vertices[v1],
             p2 = vertices[v2];
@@ -40,6 +43,7 @@ function check_triangle_quality({vertices, edges, opposites}) {
         let angle_degrees = 180 / Math.PI * Math.acos(dot_product);
         if (angle_degrees < bad_angle_limit) {
             summary[angle_degrees|0]++;
+            count++;
         }
     }
     // NOTE: a much faster test would be the ratio of the inradius to
@@ -47,7 +51,9 @@ function check_triangle_quality({vertices, edges, opposites}) {
     // worried about speed right now
     
     // TODO: consider adding circumcenters of skinny triangles to the point set
-    console.log('  bad angles:', summary.join(" "));
+    if (count > 0) {
+        console.log('  bad angles:', summary.join(" "));
+    }
 }
 
 
@@ -57,15 +63,15 @@ function check_mesh_connectivity({vertices, edges, opposites}) {
     let ghost_vertex = vertices.length - 1, out = [];
     for (let e0 = 0; e0 < edges.length; e0++) {
         if (opposites[opposites[e0]] !== e0) {
-            console.log(`FAIL opposites[opposites[${e0}] !== ${e0}`);
+            console.log(`FAIL opposites[opposites[${e0}]] !== ${e0}`);
         }
         let e = e0, count = 0;
         out.length = 0;
         do {
             count++; out.push(e);
-            e = e_to_next_e(opposites[e]);
+            e = e_next_e(opposites[e]);
             if (count > 100 && edges[e0] !== ghost_vertex) {
-                console.log(`FAIL to circulate around vertex with start edge=${e0} from vertex ${edges[e0]} to ${edges[e_to_next_e(e0)]}, out=${out}`);
+                console.log(`FAIL to circulate around vertex with start edge=${e0} from vertex ${edges[e0]} to ${edges[e_next_e(e0)]}, out=${out}`);
                 break;
             }
         } while (e !== e0);
@@ -116,13 +122,13 @@ function add_ghost_structure({vertices, edges, opposites}) {
 
     for (let i = 0, e = first_unpaired_edge;
          i < num_unpaired_edges;
-         i++, e = unpaired[new_edges[e_to_next_e(e)]]) {
+         i++, e = unpaired[new_edges[e_next_e(e)]]) {
 
         // Construct a ghost edge for e
         let ghost_edge = num_solid_edges + 3 * i;
         new_opposites[e] = ghost_edge;
         new_opposites[ghost_edge] = e;
-        new_edges[ghost_edge] = new_edges[e_to_next_e(e)];
+        new_edges[ghost_edge] = new_edges[e_next_e(e)];
         
         // Construct the rest of the ghost triangle
         new_edges[ghost_edge + 1] = new_edges[e];
