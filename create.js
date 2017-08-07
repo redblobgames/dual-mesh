@@ -147,8 +147,8 @@ function add_ghost_structure({vertices, edges, opposites}) {
 }
 
 
-function create_mesh(spacing) {
-    let generator = new Poisson([1000, 1000], spacing);
+function create_mesh(spacing, random=Math.random) {
+    let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
     let boundary_vertices = add_boundary_vertices(spacing, 1000);
     boundary_vertices.forEach((p) => generator.addPoint(p));
     let vertices = generator.fill();
