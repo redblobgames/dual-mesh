@@ -5,35 +5,35 @@
 /**
  * Deserialize binary graph data; see serialize.js for format
  */
-function deserialize_mesh(arraybuffer) {
+function deserializeMesh(arraybuffer) {
     let dv = new DataView(arraybuffer);
 
     // header
-    let num_vertices = dv.getUint32(0);
-    let num_boundary_vertices = dv.getUint32(4);
-    let num_edges = dv.getUint32(8);
-    let num_solid_edges = dv.getUint32(12);
+    let numVertices = dv.getUint32(0);
+    let numBoundaryVertices = dv.getUint32(4);
+    let numEdges = dv.getUint32(8);
+    let numSolidEdges = dv.getUint32(12);
 
     // vertices
     let p = 16;
     let vertices = [];
-    for (let i = 0; i < num_vertices; i++) {
+    for (let i = 0; i < numVertices; i++) {
         vertices.push([dv.getFloat32(p), dv.getFloat32(p+4)]);
         p += 8;
     }
 
     // edges, opposites
-    const uint_size_edges = num_vertices < (1 << 16)? 2 : 4;
-    const uint_size_opposites = num_edges < (1 << 16)? 2 : 4;
+    const uintSizeEdges = numVertices < (1 << 16)? 2 : 4;
+    const uintSizeOpposites = numEdges < (1 << 16)? 2 : 4;
     
-    let edges = new (uint_size_edges == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
-    p += num_edges * uint_size_edges;
-    let opposites = new (uint_size_opposites == 2? Int16Array : Int32Array)(arraybuffer, p, num_edges);
-    p += num_edges * uint_size_opposites;
+    let edges = new (uintSizeEdges == 2? Int16Array : Int32Array)(arraybuffer, p, numEdges);
+    p += numEdges * uintSizeEdges;
+    let opposites = new (uintSizeOpposites == 2? Int16Array : Int32Array)(arraybuffer, p, numEdges);
+    p += numEdges * uintSizeOpposites;
 
     // check
     if (p != arraybuffer.byteLength) { throw "miscalculated buffer length"; }
-    return {num_boundary_vertices, num_solid_edges, vertices, edges, opposites};
+    return {numBoundaryVertices, numSolidEdges, vertices, edges, opposites};
 }
 
-module.exports = deserialize_mesh;
+module.exports = deserializeMesh;

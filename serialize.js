@@ -14,22 +14,22 @@
  * edges: UInt{16,32}Array[num_edges] -- UInt16 if num_vertices < (1<<16)
  * opposites: UInt{16,32}Array[num_edges] -- UInt32 if num_edges < (1<<16)
  */
-function serialize_mesh({num_boundary_vertices, num_solid_edges, vertices, edges, opposites}) {
-    const uint_size_edges = vertices.length < (1 << 16)? 2 : 4;
-    const uint_size_opposites = edges.length < (1 << 16)? 2 : 4;
-    let size_header = 4 + 4 + 4 + 4;
-    let size_vertices = vertices.length * 2 * 4;
-    let size_edges = edges.length * uint_size_edges;
-    let size_opposites = opposites.length * uint_size_opposites;
-    let arraybuffer = new ArrayBuffer(size_header + size_vertices + size_edges + size_opposites);
+function serializeMesh({numBoundaryVertices, numSolidEdges, vertices, edges, opposites}) {
+    const uintSizeEdges = vertices.length < (1 << 16)? 2 : 4;
+    const uintSizeOpposites = edges.length < (1 << 16)? 2 : 4;
+    let sizeHeader = 4 + 4 + 4 + 4;
+    let sizeVertices = vertices.length * 2 * 4;
+    let sizeEdges = edges.length * uintSizeEdges;
+    let size_opposites = opposites.length * uintSizeOpposites;
+    let arraybuffer = new ArrayBuffer(sizeHeader + sizeVertices + sizeEdges + size_opposites);
     
     let dv = new DataView(arraybuffer);
 
     // header
     dv.setUint32(0, vertices.length);
-    dv.setUint32(4, num_boundary_vertices);
+    dv.setUint32(4, numBoundaryVertices);
     dv.setUint32(8, edges.length);
-    dv.setUint32(12, num_solid_edges);
+    dv.setUint32(12, numSolidEdges);
 
     // vertices
     let p = 16;
@@ -39,10 +39,10 @@ function serialize_mesh({num_boundary_vertices, num_solid_edges, vertices, edges
     }
 
     // edges, opposites
-    new (uint_size_edges == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(edges);
-    p += edges.length * uint_size_edges;
-    new (uint_size_opposites == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(opposites);
-    p += edges.length * uint_size_opposites;
+    new (uintSizeEdges == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(edges);
+    p += edges.length * uintSizeEdges;
+    new (uintSizeOpposites == 2? Int16Array : Int32Array)(arraybuffer, p, edges.length).set(opposites);
+    p += edges.length * uintSizeOpposites;
     
     // check
     if (p != arraybuffer.byteLength) { throw("miscalculated buffer length"); }
@@ -50,4 +50,4 @@ function serialize_mesh({num_boundary_vertices, num_solid_edges, vertices, edges
 }
 
 
-module.exports = serialize_mesh;
+module.exports = serializeMesh;
