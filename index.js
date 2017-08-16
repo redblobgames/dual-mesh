@@ -18,7 +18,7 @@
  * Naming convention: x_name_y takes x (e, v, t) as input and produces
  * y (e, v, t) as output. If the output isn't a mesh index (e, v, t)
  * then the _y suffix is omitted.
- * 
+ *
  * The mesh has no boundaries; it wraps around the "back" using a
  * "ghost" vertex. Some vertices are marked as the boundary; these are
  * connected to the ghost vertex. Ghost triangles and ghost edges
@@ -26,11 +26,11 @@
  * aren't "ghost" are called "solid".
  */
 class TriangleMesh {
-    static e_to_t(e)      { return (e/3) | 0; }
+    static e_to_t(e)   { return (e/3) | 0; }
     static e_prev_e(e) { return (e % 3 == 0) ? e+2 : e-1; }
     static e_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
 
-    /** 
+    /**
      * constructor takes partial mesh information and fills in the rest; the
      * partial information is generated in create.js or in deserialize.js
      */
@@ -70,9 +70,12 @@ class TriangleMesh {
     e_begin_v(e)  { return this.edges[e]; }
     e_end_v(e)    { return this.edges[TriangleMesh.e_next_e(e)]; }
 
+    e_inner_t(e)  { return TriangleMesh.e_to_t(e); }
+    e_outer_t(e)  { return TriangleMesh.e_to_t(this.opposites[e]); }
+    
     t_circulate_e(out_e, t) { out_e.length = 3; for (let i = 0; i < 3; i++) { out_e[i] = 3*t + i; } return out_e; }
     t_circulate_v(out_v, t) { out_v.length = 3; for (let i = 0; i < 3; i++) { out_v[i] = this.edges[3*t+i]; } return out_v; }
-    t_circulate_t(out_t, t) { out_t.length = 3; for (let i = 0; i < 3; i++) { out_t[i] = TriangleMesh.e_to_t(this.opposites[3*t+i]); } return out_t; }
+    t_circulate_t(out_t, t) { out_t.length = 3; for (let i = 0; i < 3; i++) { out_t[i] = this.e_outer_t(3*t+i); } return out_t; }
     
     v_circulate_e(out_e, v) {
         const e0 = this.starts[v];
@@ -116,4 +119,3 @@ class TriangleMesh {
 }
 
 module.exports = TriangleMesh;
-
