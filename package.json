@@ -4,7 +4,7 @@
     "private": true,
     "dependencies": {},
     "devDependencies": {
-        "delaunator": "*",
+        "delaunator": "^1.0.4",
         "poisson-disk-sampling": "*",
         "tape": "*"
     },
