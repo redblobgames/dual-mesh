@@ -1,4 +1,4 @@
-// From http://www.redblobgames.com/maps/triangle-mesh/
+// From http://www.redblobgames.com/maps/dual-mesh/
 // Copyright 2017 Red Blob Games <redblobgames@gmail.com>
 // License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
 
@@ -14,10 +14,10 @@
 let Poisson = require('poisson-disk-sampling'); // MIT licensed
 let Delaunator = require('delaunator');        // ISC licensed
 
-function e_next_e(e) { return (e % 3 == 2) ? e-2 : e+1; }
+function s_next_s(s) { return (s % 3 == 2) ? s-2 : s+1; }
 
 
-function checkPointInequality({vertices, edges, opposites}) {
+function checkPointInequality({r_vertex, _s_start_r, _s_opposite_s}) {
     // TODO: check for collinear vertices. Around each red point P if
     // there's a point Q and R both connected to it, and the angle P→Q and
     // the angle P→R are 180° apart, then there's collinearity. This would
@@ -25,24 +25,24 @@ function checkPointInequality({vertices, edges, opposites}) {
 }
 
 
-function checkTriangleInequality({vertices, edges, opposites}) {
+function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
     // check for skinny triangles
-    const bad_angle_limit = 30;
-    let summary = new Array(bad_angle_limit).fill(0);
+    const badAngleLimit = 30;
+    let summary = new Array(badAngleLimit).fill(0);
     let count = 0;
-    for (let e = 0; e < edges.length; e++) {
-        let v0 = edges[e],
-            v1 = edges[e_next_e(e)],
-            v2 = edges[e_next_e(e_next_e(e))];
-        let p0 = vertices[v0],
-            p1 = vertices[v1],
-            p2 = vertices[v2];
+    for (let s = 0; s < _s_start_r.length; s++) {
+        let r0 = _s_start_r[s],
+            r1 = _s_start_r[s_next_s(s)],
+            r2 = _s_start_r[s_next_s(s_next_s(s))];
+        let p0 = r_vertex[r0],
+            p1 = r_vertex[r1],
+            p2 = r_vertex[r2];
         let d0 = [p0[0]-p1[0], p0[1]-p1[1]];
         let d2 = [p2[0]-p1[0], p2[1]-p1[1]];
-        let dot_product = d0[0] * d2[0] + d0[1] + d2[1];
-        let angle_degrees = 180 / Math.PI * Math.acos(dot_product);
-        if (angle_degrees < bad_angle_limit) {
-            summary[angle_degrees|0]++;
+        let dotProduct = d0[0] * d2[0] + d0[1] + d2[1];
+        let angleDegrees = 180 / Math.PI * Math.acos(dotProduct);
+        if (angleDegrees < badAngleLimit) {
+            summary[angleDegrees|0]++;
             count++;
         }
     }
@@ -57,24 +57,24 @@ function checkTriangleInequality({vertices, edges, opposites}) {
 }
 
 
-function checkMeshConnectivity({vertices, edges, opposites}) {
-    // 1. make sure each edge's opposite is back to itself
-    // 2. make sure vertex-circulating starting from each edge works
-    let ghost_v = vertices.length - 1, out_e = [];
-    for (let e0 = 0; e0 < edges.length; e0++) {
-        if (opposites[opposites[e0]] !== e0) {
-            console.log(`FAIL opposites[opposites[${e0}]] !== ${e0}`);
+function checkMeshConnectivity({r_vertex, _s_start_r, _s_opposite_s}) {
+    // 1. make sure each side's opposite is back to itself
+    // 2. make sure region-circulating starting from each side works
+    let ghost_r = r_vertex.length - 1, out_s = [];
+    for (let s0 = 0; s0 < _s_start_r.length; s0++) {
+        if (_s_opposite_s[_s_opposite_s[s0]] !== s0) {
+            console.log(`FAIL _s_opposite_s[_s_opposite_s[${s0}]] !== ${s0}`);
         }
-        let e = e0, count = 0;
-        out_e.length = 0;
+        let s = s0, count = 0;
+        out_s.length = 0;
         do {
-            count++; out_e.push(e);
-            e = e_next_e(opposites[e]);
-            if (count > 100 && edges[e0] !== ghost_v) {
-                console.log(`FAIL to circulate around vertex with start edge=${e0} from vertex ${edges[e0]} to ${edges[e_next_e(e0)]}, out_e=${out_e}`);
+            count++; out_s.push(s);
+            s = s_next_s(_s_opposite_s[s]);
+            if (count > 100 && _s_start_r[s0] !== ghost_r) {
+                console.log(`FAIL to circulate around region with start side=${s0} from region ${_s_start_r[s0]} to ${_s_start_r[s_next_s(s0)]}, out_s=${out_s}`);
                 break;
             }
-        } while (e !== e0);
+        } while (s !== s0);
     }
 }
 
@@ -86,85 +86,85 @@ function checkMeshConnectivity({vertices, edges, opposites}) {
  * These points also prevent the Poisson disc generator
  * from making uneven points near the boundary.
  */
-function addBoundaryVertices(spacing, size) {
+function addBoundaryPoints(spacing, size) {
     let N = Math.ceil(size/spacing);
-    let vertices = [];
+    let points = [];
     for (let i = 0; i <= N; i++) {
         let t = (i + 0.5) / (N + 1);
         let w = size * t;
         let offset = Math.pow(t - 0.5, 2);
-        vertices.push([offset, w], [size-offset, w]);
-        vertices.push([w, offset], [w, size-offset]);
+        points.push([offset, w], [size-offset, w]);
+        points.push([w, offset], [w, size-offset]);
     }
-    return vertices;
+    return points;
 }
 
 
-function addGhostStructure({vertices, edges, opposites}) {
-    const numSolidEdges = edges.length;
-    const ghost_v = vertices.length;
+function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
+    const numSolidSides = _s_start_r.length;
+    const ghost_r = r_vertex.length;
     
-    let numUnpairedEdges = 0, firstUnpairedEdge = -1;
-    let unpaired = []; // seed to edge
-    for (let e = 0; e < numSolidEdges; e++) {
-        if (opposites[e] === -1) {
-            numUnpairedEdges++;
-            unpaired[edges[e]] = e;
-            firstUnpairedEdge = e;
+    let numUnpairedSides = 0, firstUnpairedEdge = -1;
+    let r_unpaired_s = []; // seed to side
+    for (let s = 0; s < numSolidSides; s++) {
+        if (_s_opposite_s[s] === -1) {
+            numUnpairedSides++;
+            r_unpaired_s[_s_start_r[s]] = s;
+            firstUnpairedEdge = s;
         }
     }
 
-    let newVertices = vertices.concat([[500, 500]]);
-    let newEdges = new Int32Array(numSolidEdges + 3 * numUnpairedEdges);
-    newEdges.set(edges);
-    let newOpposites = new Int32Array(numSolidEdges + 3 * numUnpairedEdges);
-    newOpposites.set(opposites);
+    let r_newvertex = r_vertex.concat([[500, 500]]);
+    let s_newstart_r = new Int32Array(numSolidSides + 3 * numUnpairedSides);
+    s_newstart_r.set(_s_start_r);
+    let s_newopposite_s = new Int32Array(numSolidSides + 3 * numUnpairedSides);
+    s_newopposite_s.set(_s_opposite_s);
 
-    for (let i = 0, e = firstUnpairedEdge;
-         i < numUnpairedEdges;
-         i++, e = unpaired[newEdges[e_next_e(e)]]) {
+    for (let i = 0, s = firstUnpairedEdge;
+         i < numUnpairedSides;
+         i++, s = r_unpaired_s[s_newstart_r[s_next_s(s)]]) {
 
-        // Construct a ghost edge for e
-        let ghost_e = numSolidEdges + 3 * i;
-        newOpposites[e] = ghost_e;
-        newOpposites[ghost_e] = e;
-        newEdges[ghost_e] = newEdges[e_next_e(e)];
+        // Construct a ghost side for s
+        let ghost_s = numSolidSides + 3 * i;
+        s_newopposite_s[s] = ghost_s;
+        s_newopposite_s[ghost_s] = s;
+        s_newstart_r[ghost_s] = s_newstart_r[s_next_s(s)];
         
         // Construct the rest of the ghost triangle
-        newEdges[ghost_e + 1] = newEdges[e];
-        newEdges[ghost_e + 2] = ghost_v;
-        let k = numSolidEdges + (3 * i + 4) % (3 * numUnpairedEdges);
-        newOpposites[ghost_e + 2] = k;
-        newOpposites[k] = ghost_e + 2;
+        s_newstart_r[ghost_s + 1] = s_newstart_r[s];
+        s_newstart_r[ghost_s + 2] = ghost_r;
+        let k = numSolidSides + (3 * i + 4) % (3 * numUnpairedSides);
+        s_newopposite_s[ghost_s + 2] = k;
+        s_newopposite_s[k] = ghost_s + 2;
     }
 
     return {
-        numSolidEdges,
-        vertices: newVertices,
-        edges: newEdges,
-        opposites: newOpposites
+        numSolidSides,
+        r_vertex: r_newvertex,
+        _s_start_r: s_newstart_r,
+        _s_opposite_s: s_newopposite_s
     };
 }
 
 
 function createMesh(spacing, random=Math.random) {
     let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
-    let boundaryVertices = addBoundaryVertices(spacing, 1000);
-    boundaryVertices.forEach((p) => generator.addPoint(p));
-    let vertices = generator.fill();
+    let boundaryPoints = addBoundaryPoints(spacing, 1000);
+    boundaryPoints.forEach((p) => generator.addPoint(p));
+    let points = generator.fill();
 
-    let delaunator = new Delaunator(vertices);
+    let delaunator = new Delaunator(points);
     let graph = {
-        vertices,
-        edges: delaunator.triangles,
-        opposites: delaunator.halfedges
+        r_vertex: points,
+        _s_start_r: delaunator.triangles,
+        _s_opposite_s: delaunator.halfedges
     };
 
     checkPointInequality(graph);
     checkTriangleInequality(graph);
     
     graph = addGhostStructure(graph);
-    graph.numBoundaryVertices = boundaryVertices.length;
+    graph.numBoundaryRegions = boundaryPoints.length;
     checkMeshConnectivity(graph);
 
     return graph;
