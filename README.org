@@ -1,0 +1,19 @@
+[[http://unmaintained.tech/badge.svg]]
+
+Dual mesh library for my polygon map generator projects.
+
+See [[http://www.redblobgames.com/x/1721-voronoi-alternative/][my blog post about centroid polygons]] and [[http://www.redblobgames.com/x/1722-b-rep-triangle-meshes/][my blog post about the dual mesh data structure]]. Summary of changes since then:
+
+1. I renamed /seeds/ =s= to /regions/ =r=.
+1. I renamed /edges/ =e= to /sides/ =s=.
+1. I added ghost triangles, sides, and regions.
+1. Everything has an accessor instead of directly accessing the =starts[]=, =opposites[]=, and =edges[]= arrays.
+1. All nine circulation functions are defined: ={r,s,t}_circulate_{r,s,t}=
+
+For efficiency, the accessors never allocate new arrays; pass in an “out” parameter where the result should be written.
+
+** Built with
+
+- [[https://github.com/mapbox/delaunator][delaunator]] to build the Delaunay triangulation
+- [[https://github.com/kchapelier/poisson-disk-sampling][poisson-disk-sampling]] to choose evenly spaced points
+
