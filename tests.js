@@ -33,6 +33,32 @@ tape("encoding and decoding", function(test) {
 });
 
 
+tape("structural invariants", function(test) {
+    let mesh = new TriangleMesh(createMesh({spacing: 450.0}));
+    let s_out = [];
+    for (let s1 = 0; s1 < mesh.numSides; s1++) {
+        let s2 = mesh.s_opposite_s(s1);
+        test.equal(mesh.s_opposite_s(s2), s1);
+        test.equal(mesh.s_begin_r(s1), mesh.s_end_r(s2));
+        test.equal(mesh.s_inner_t(s1), mesh.s_outer_t(s2));
+    }
+    for (let r = 0; r < mesh.numRegions; r++) {
+        mesh.r_circulate_s(s_out, r);
+        for (let s of s_out) {
+            test.equal(mesh.s_begin_r(s), r);
+        }
+    }
+    for (let t = 0; t < mesh.numTriangles; t++) {
+        mesh.t_circulate_s(s_out, t);
+        for (let s of s_out) {
+            test.equal(mesh.s_inner_t(s), t);
+        }
+    }
+    
+    test.end();
+});
+
+
 let Delaunator = require('delaunator');
 let Poisson = require('poisson-disk-sampling');
 
