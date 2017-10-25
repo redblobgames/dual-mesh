@@ -1,6 +1,6 @@
 {
     "name": "@redblobgames/dual-mesh",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "private": true,
     "dependencies": {},
     "devDependencies": {
@@ -9,6 +9,7 @@
         "tape": "*"
     },
     "scripts": {
-        "test": "node tests.js"
+        "test": "node tests.js",
+        "docs": "watchify docs/diagrams.js -o docs/_bundle.js"
     }
 }
