@@ -16,7 +16,7 @@ Naming convention: x_name_y takes x (r, s, t) as input and produces
 y (r, s, t) as output. If the output isn't a mesh index (r, s, t)
 then the _y suffix is omitted.
 
-[[https:docs/][Documentation is here]].
+[[https://redblobgames.github.io/dual-mesh/][Documentation is here]].
 
 ** Built with
 
