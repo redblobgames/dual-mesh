@@ -1,6 +1,8 @@
-// From http://www.redblobgames.com/maps/dual-mesh/
-// Copyright 2017 Red Blob Games <redblobgames@gmail.com>
-// License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
+/*
+ * From https://github.com/redblobgames/maps/dual-mesh/
+ * Copyright 2017 Red Blob Games <redblobgames@gmail.com>
+ * License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
+ */
 
 'use strict';
 
@@ -14,7 +16,7 @@ let deserializeMesh = require('./deserialize');
 tape("encoding and decoding", function(test) {
     // Mesh spacing 5.0 lets me test the case of numRegions < (1<<16)
     // and numSides > (1<<16), which makes the two arrays different sizes
-    let meshIn = createMesh(5.0);
+    let meshIn = createMesh({spacing: 5.0});
     let meshOut = new TriangleMesh(deserializeMesh(serializeMesh(meshIn)));
     test.equal(meshIn.numBoundaryRegions, meshOut.numBoundaryRegions);
     test.equal(meshIn.numSolidSides, meshOut.numSolidSides);

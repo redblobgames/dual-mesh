@@ -12,6 +12,12 @@ See [[http://www.redblobgames.com/x/1721-voronoi-alternative/][my blog post abou
 
 For efficiency, the accessors never allocate new arrays; pass in an “out” parameter where the result should be written.
 
+Naming convention: x_name_y takes x (r, s, t) as input and produces
+y (r, s, t) as output. If the output isn't a mesh index (r, s, t)
+then the _y suffix is omitted.
+
+[[https:docs/][Documentation is here]].
+
 ** Built with
 
 - [[https://github.com/mapbox/delaunator][delaunator]] to build the Delaunay triangulation

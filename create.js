@@ -1,12 +1,11 @@
-// From http://www.redblobgames.com/maps/dual-mesh/
-// Copyright 2017 Red Blob Games <redblobgames@gmail.com>
-// License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
-
 /*
+ * From https://github.com/redblobgames/maps/dual-mesh/
+ * Copyright 2017 Red Blob Games <redblobgames@gmail.com>
+ * License: Apache v2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>
+ *
  * Generate a random triangle mesh for the area 0 <= x <= 1000, 0 <= y <= 1000
  *
  * This program runs on the command line (node)
- *
  */
 
 'use strict';
@@ -51,7 +50,7 @@ function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
     // worried about speed right now
     
     // TODO: consider adding circumcenters of skinny triangles to the point set
-    if (count > 0) {
+    if (createMesh.PRINT_WARNINGS && count > 0) {
         console.log('  bad angles:', summary.join(" "));
     }
 }
@@ -147,15 +146,31 @@ function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
 }
 
 
-function createMesh(spacing, random=Math.random) {
+/**
+ * Create mesh data in a 1000x1000 space for passing to DualMesh
+ *
+ * Either pass {spacing, random} to choose random spaced points with
+ * boundary points, or pass {points} to use an existing set of points
+ * without added boundary points. Or pass {spacing, points, random} to 
+ * use a given set of points, plus random spaced points, plus boundary
+ * points.
+ *
+ * The mesh generator runs some sanity checks but does not correct the
+ * generated points.
+ *
+ * This interface is insufficient to cover all the possible variants
+ * so it is SUBJECT TO CHANGE.
+ */
+function createMesh({spacing=Infinity, points=[], random=Math.random}) {
     let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
-    let boundaryPoints = addBoundaryPoints(spacing, 1000);
+    let boundaryPoints = isFinite(spacing)? addBoundaryPoints(spacing, 1000) : [];
     boundaryPoints.forEach((p) => generator.addPoint(p));
-    let points = generator.fill();
+    points.forEach((p) => generator.addPoint(p));
+    let allPoints = generator.fill();
 
-    let delaunator = new Delaunator(points);
+    let delaunator = new Delaunator(allPoints);
     let graph = {
-        r_vertex: points,
+        r_vertex: allPoints,
         _s_start_r: delaunator.triangles,
         _s_opposite_s: delaunator.halfedges
     };
@@ -171,4 +186,5 @@ function createMesh(spacing, random=Math.random) {
 }
 
 
+createMesh.PRINT_WARNINGS = false;
 module.exports = createMesh;
