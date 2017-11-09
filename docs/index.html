@@ -91,7 +91,7 @@
         </div>
 
         <p>
-          Lots of error-prone code is avoided by using <a href="https://en.wikipedia.org/wiki/Sentinel_node">sentinel values</a> instead of nulls. Checking whether each side has an opposite leads to lots of error-prone code. Iterating around the vertices of a polygon loop can fail if some vertices are missing. Switching to a side's opposite can fail if there is no opposite. Finding a triangle's neighbors can fail if some triangles are off the edge of the map.
+          Lots of error-prone code is avoided by using <a href="https://en.wikipedia.org/wiki/Sentinel_node">sentinel values</a> instead of nulls. In this case, the mesh will have <code>opposites[s] == -1</code> at the boundaries of the map. Checking whether each side has an opposite (<code>≥ 0</code>) leads to error-prone code. Iterating around the vertices of a polygon loop can fail if some vertices are missing. Switching to a side's opposite can fail if there is no opposite. Finding a triangle's neighbors can fail if some triangles are off the edge of the map. The solution is to “wrap” the map around the back so that there are no more boundaries.
         </p>
 
         <p>
@@ -113,18 +113,30 @@
         </div>
 
         <p>
-          The <em>boundary</em> elements are those adjacent to the outside of the map (ghost region). These are not needed for meshes but are useful for map generation algorithms.
+          The ghost elements eliminate the boundary from a structural point of view, but I still want a boundary in the generated maps. The <em>boundary</em> elements are those adjacent to the outside of the map (ghost region). In the mesh creation function the points are evenly spaced but that isn't necessary.
         </p>
         
         <h2 id="operations">Operations</h2>
 
+        <div class="diagram-g1">
+          <svg width="600" height="300">
+            <a-side-black-edges :graph="graph" :alpha="0.05"/>
+            <a-side-white-edges :graph="graph" :alpha="0.03"/>
+            <a-side-labels :graph="graph"/>
+            <a-region-points :graph="graph" :hover="hover"/>
+            <a-region-labels :graph="graph"/>
+            <a-triangle-points :graph="graph" :hover="hover"/>
+            <a-triangle-labels :graph="graph"/>
+          </svg>
+        </div>
+
         <dl>
-          <dt>s_next_s(s), s_prev_s(s)</dt><dd>circulate around triangle</dd>
-          <dt>s_begin_r(s), s_end_r(s)</dt><dd>black edge endpoints</dd>
-          <dt>s_inner_t(s), s_outer_t(s)</dt><dd>white edge endpoints</dd>
-          <dt>s_opposite_s(s)</dt><dd>opposite of half-edge</dd>
-          <dt>{t,r}_circulate_{s,r,t}(output, input)</dt><dd>fills neighbors and returns output; pass in [] to make a new array</dd>
-          <dt>ghost_r()</dt><dd>the ghost r index</dd>
+          <dt>s_next_s(s), s_prev_s(s)</dt><dd>circulate around triangle (s0 → s1 → s2 → s0)</dd>
+          <dt>s_begin_r(s), s_end_r(s)</dt><dd>black edge endpoints (s0 → r0, r1)</dd>
+          <dt>s_inner_t(s), s_outer_t(s)</dt><dd>white edge endpoints (s0 → t0, t1)</dd>
+          <dt>s_opposite_s(s)</dt><dd>opposite of half-edge (s0 → s3; s3 → s0)</dd>
+          <dt>{t,r}_circulate_{s,r,t}(output, input)</dt><dd>fills neighbors and returns output; pass in [] to make a new array (t1 → r0, r2, r3; t1 → s3, s4, s5)</dd>
+          <dt>ghost_r()</dt><dd>the ghost r index (not shown)</dd>
           <dt>{s,r,t}_ghost(input)</dt><dd>whether an element is a ghost</dd>
           <dt>{s,r}_boundary(input)</dt><dd>whether an element is on the boundary</dd>
         </dl>
@@ -160,13 +172,16 @@
           to the kinds of structures and operations I wanted to work
           with for polygon maps. For my 2017 map generator projects
           (Javascript) I wrote this wrapper around the delaunator
-          library.
+          library. See <a href="http://www.redblobgames.com/x/1721-voronoi-alternative/">my blog post about centroid polygons</a> and <a href="http://www.redblobgames.com/x/1722-b-rep-triangle-meshes/">my
+          blog post about the dual mesh data structure. This library
+          is an evolution of that dual mesh data structure, with ghost
+          elements and different names.
         </p>
 
         <h2 id="source">Source code</h2>
 
         <p>
-          Take a look at <a href="https://github.com/redblobgames/dual-mesh">@redblobgames/dual-mesh</a>, but at the moment I'm writing it only for myself and don't intend for others to use it. I do make breaking changes.
+          Take a look at <a href="https://github.com/redblobgames/dual-mesh">@redblobgames/dual-mesh</a>, but at the moment I'm writing it only for myself and don't intend for others to use it. <strong>I do make breaking changes.</strong>
         </p>
         
       </div>

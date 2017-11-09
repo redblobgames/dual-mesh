@@ -1,22 +1,24 @@
 [[http://unmaintained.tech/badge.svg]]
 
-Dual mesh library for my polygon map generator projects.
+Dual mesh library for my polygon map generator projects. Feel free to use this, but it's not a stable library and I do make breaking changes.
 
-See [[http://www.redblobgames.com/x/1721-voronoi-alternative/][my blog post about centroid polygons]] and [[http://www.redblobgames.com/x/1722-b-rep-triangle-meshes/][my blog post about the dual mesh data structure]]. Summary of changes since then:
+[[https://redblobgames.github.io/dual-mesh/][Documentation is here]], but it's a bit rough. See [[http://www.redblobgames.com/x/1721-voronoi-alternative/][my blog post about centroid polygons]] and [[http://www.redblobgames.com/x/1722-b-rep-triangle-meshes/][my blog post about the dual mesh data structure]] for the history. Those blog posts used the names “seeds, edges, triangles” but now I call them “regions, sides, triangles”, and I use “ghost” elements to eliminate the boundaries.
 
-1. I renamed /seeds/ =s= to /regions/ =r=.
-1. I renamed /edges/ =e= to /sides/ =s=.
-1. I added ghost triangles, sides, and regions.
-1. Everything has an accessor instead of directly accessing the =starts[]=, =opposites[]=, and =edges[]= arrays.
-1. All nine circulation functions are defined: ={r,s,t}_circulate_{r,s,t}=
+The naming convention is: =x_name_y= takes type x (r, s, t) as input and produces type y (r, s, t) as output. For example, =s_begin_r= is a function that takes a side (s) as input and returns a region (r), and could be called ~r = mesh.s_begin_r(s)~.
 
-For efficiency, the accessors never allocate new arrays; pass in an “out” parameter where the result should be written.
+For efficiency, the accessors never allocate new arrays, but take a parameter where the result should be written:
 
-Naming convention: x_name_y takes x (r, s, t) as input and produces
-y (r, s, t) as output. If the output isn't a mesh index (r, s, t)
-then the _y suffix is omitted.
+#+begin_src js
+let out_r = [];
+mesh.t_circulate_r(out_r, t);
+// output written into out_r
+#+end_src
 
-[[https://redblobgames.github.io/dual-mesh/][Documentation is here]].
+For convenience, they also return the array, so this works:
+
+#+begin_src js
+let out_r = mesh.t_circulate_r([], t);
+#+end_src
 
 ** Built with
 
