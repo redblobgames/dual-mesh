@@ -85,6 +85,9 @@ class TriangleMesh {
     s_inner_t(s)  { return TriangleMesh.s_to_t(s); }
     s_outer_t(s)  { return TriangleMesh.s_to_t(this._s_opposite_s[s]); }
 
+    s_next_s(s)   { return TriangleMesh.s_next_s(s); }
+    s_prev_s(s)   { return TriangleMesh.s_prev_s(s); }
+    
     s_opposite_s(s) { return this._s_opposite_s[s]; }
     
     t_circulate_s(out_s, t) { out_s.length = 3; for (let i = 0; i < 3; i++) { out_s[i] = 3*t + i; } return out_s; }
