@@ -46,39 +46,47 @@ class TriangleMesh {
      * constructor takes partial mesh information and fills in the rest; the
      * partial information is generated in create.js or in deserialize.js
      */
-    constructor ({numBoundaryRegions, numSolidSides, r_vertex, _s_start_r, _s_opposite_s}) {
-        Object.assign(this, {numBoundaryRegions, numSolidSides, r_vertex, _s_start_r, _s_opposite_s});
+    constructor ({numBoundaryRegions, numSolidSides, _r_vertex, _s_start_r, _s_opposite_s}) {
+        Object.assign(this, {numBoundaryRegions, numSolidSides,
+                             _r_vertex, _s_start_r, _s_opposite_s});
 
-        this.numSides = this._s_start_r.length;
-        this.numRegions = this.r_vertex.length;
+        this.numSides = _s_start_r.length;
+        this.numRegions = _r_vertex.length;
         this.numSolidRegions = this.numRegions - 1;
         this.numTriangles = this.numSides / 3;
         this.numSolidTriangles = this.numSolidSides / 3;
         
         // Construct an index for finding sides connected to a region
         this._r_any_s = new Int32Array(this.numRegions);
-        for (let s = 0; s < this._s_start_r.length; s++) {
-            this._r_any_s[this._s_start_r[s]] = this._r_any_s[this._s_start_r[s]] || s;
+        for (let s = 0; s < _s_start_r.length; s++) {
+            this._r_any_s[_s_start_r[s]] = this._r_any_s[_s_start_r[s]] || s;
         }
 
         // Construct triangle coordinates
-        this.t_vertex = new Array(this.numTriangles);
-        for (let s = 0; s < this._s_start_r.length; s += 3) {
-            let a = this.r_vertex[this._s_start_r[s]],
-                b = this.r_vertex[this._s_start_r[s+1]],
-                c = this.r_vertex[this._s_start_r[s+2]];
+        this._t_vertex = new Array(this.numTriangles);
+        for (let s = 0; s < _s_start_r.length; s += 3) {
+            let a = _r_vertex[_s_start_r[s]],
+                b = _r_vertex[_s_start_r[s+1]],
+                c = _r_vertex[_s_start_r[s+2]];
             if (this.s_ghost(s)) {
                 // ghost triangle center is just outside the unpaired side
                 let dx = b[0]-a[0], dy = b[1]-a[1];
-                this.t_vertex[s/3] = [a[0] + 0.5*(dx+dy), a[1] + 0.5*(dy-dx)];
+                this._t_vertex[s/3] = [a[0] + 0.5*(dx+dy), a[1] + 0.5*(dy-dx)];
             } else {
                 // solid triangle center is at the centroid
-                this.t_vertex[s/3] = [(a[0] + b[0] + c[0])/3,
+                this._t_vertex[s/3] = [(a[0] + b[0] + c[0])/3,
                                      (a[1] + b[1] + c[1])/3];
             }
         }
     }
 
+    r_x(r)        { return this._r_vertex[r][0]; }
+    r_y(r)        { return this._r_vertex[r][1]; }
+    t_x(r)        { return this._t_vertex[r][0]; }
+    t_y(r)        { return this._t_vertex[r][1]; }
+    r_pos(out, r) { out.length = 2; out[0] = this.r_x(r); out[1] = this.r_y(r); return out; }
+    t_pos(out, t) { out.length = 2; out[0] = this.t_x(t); out[1] = this.t_y(t); return out; }
+    
     s_begin_r(s)  { return this._s_start_r[s]; }
     s_end_r(s)    { return this._s_start_r[TriangleMesh.s_next_s(s)]; }
 

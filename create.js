@@ -16,7 +16,7 @@ let Delaunator = require('delaunator');        // ISC licensed
 function s_next_s(s) { return (s % 3 == 2) ? s-2 : s+1; }
 
 
-function checkPointInequality({r_vertex, _s_start_r, _s_opposite_s}) {
+function checkPointInequality({_r_vertex, _s_start_r, _s_opposite_s}) {
     // TODO: check for collinear vertices. Around each red point P if
     // there's a point Q and R both connected to it, and the angle P→Q and
     // the angle P→R are 180° apart, then there's collinearity. This would
@@ -24,7 +24,7 @@ function checkPointInequality({r_vertex, _s_start_r, _s_opposite_s}) {
 }
 
 
-function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
+function checkTriangleInequality({_r_vertex, _s_start_r, _s_opposite_s}) {
     // check for skinny triangles
     const badAngleLimit = 30;
     let summary = new Array(badAngleLimit).fill(0);
@@ -33,9 +33,9 @@ function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
         let r0 = _s_start_r[s],
             r1 = _s_start_r[s_next_s(s)],
             r2 = _s_start_r[s_next_s(s_next_s(s))];
-        let p0 = r_vertex[r0],
-            p1 = r_vertex[r1],
-            p2 = r_vertex[r2];
+        let p0 = _r_vertex[r0],
+            p1 = _r_vertex[r1],
+            p2 = _r_vertex[r2];
         let d0 = [p0[0]-p1[0], p0[1]-p1[1]];
         let d2 = [p2[0]-p1[0], p2[1]-p1[1]];
         let dotProduct = d0[0] * d2[0] + d0[1] + d2[1];
@@ -56,10 +56,10 @@ function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
 }
 
 
-function checkMeshConnectivity({r_vertex, _s_start_r, _s_opposite_s}) {
+function checkMeshConnectivity({_r_vertex, _s_start_r, _s_opposite_s}) {
     // 1. make sure each side's opposite is back to itself
     // 2. make sure region-circulating starting from each side works
-    let ghost_r = r_vertex.length - 1, out_s = [];
+    let ghost_r = _r_vertex.length - 1, out_s = [];
     for (let s0 = 0; s0 < _s_start_r.length; s0++) {
         if (_s_opposite_s[_s_opposite_s[s0]] !== s0) {
             console.log(`FAIL _s_opposite_s[_s_opposite_s[${s0}]] !== ${s0}`);
@@ -99,9 +99,9 @@ function addBoundaryPoints(spacing, size) {
 }
 
 
-function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
+function addGhostStructure({_r_vertex, _s_start_r, _s_opposite_s}) {
     const numSolidSides = _s_start_r.length;
-    const ghost_r = r_vertex.length;
+    const ghost_r = _r_vertex.length;
     
     let numUnpairedSides = 0, firstUnpairedEdge = -1;
     let r_unpaired_s = []; // seed to side
@@ -113,7 +113,7 @@ function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
         }
     }
 
-    let r_newvertex = r_vertex.concat([[500, 500]]);
+    let r_newvertex = _r_vertex.concat([[500, 500]]);
     let s_newstart_r = new Int32Array(numSolidSides + 3 * numUnpairedSides);
     s_newstart_r.set(_s_start_r);
     let s_newopposite_s = new Int32Array(numSolidSides + 3 * numUnpairedSides);
@@ -139,7 +139,7 @@ function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
 
     return {
         numSolidSides,
-        r_vertex: r_newvertex,
+        _r_vertex: r_newvertex,
         _s_start_r: s_newstart_r,
         _s_opposite_s: s_newopposite_s
     };
@@ -170,7 +170,7 @@ function createMesh({spacing=Infinity, points=[], random=Math.random}) {
 
     let delaunator = new Delaunator(allPoints);
     let graph = {
-        r_vertex: allPoints,
+        _r_vertex: allPoints,
         _s_start_r: delaunator.triangles,
         _s_opposite_s: delaunator.halfedges
     };

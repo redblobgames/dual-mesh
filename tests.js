@@ -26,7 +26,7 @@ tape("encoding and decoding", function(test) {
     // I'm testing just a subset of them to reduce noise from tape
     for (let i = 0; i < 5; i++) {
         for (let j = 0; j < 2; j++) {
-            test.ok(Math.abs(meshIn.r_vertex[i][j] - meshOut.r_vertex[i][j]) < 0.01);
+            test.ok(Math.abs(meshIn._r_vertex[i][j] - meshOut.r_pos([], i)[j]) < 0.01);
         }
     }
     test.end();

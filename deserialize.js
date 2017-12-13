@@ -18,9 +18,9 @@ function deserializeMesh(arraybuffer) {
 
     // regions
     let p = 16;
-    let r_vertex = [];
+    let _r_vertex = [];
     for (let i = 0; i < numRegions; i++) {
-        r_vertex.push([dv.getFloat32(p), dv.getFloat32(p+4)]);
+        _r_vertex.push([dv.getFloat32(p), dv.getFloat32(p+4)]);
         p += 8;
     }
 
@@ -35,7 +35,7 @@ function deserializeMesh(arraybuffer) {
 
     // check
     if (p != arraybuffer.byteLength) { throw "miscalculated buffer length"; }
-    return {numBoundaryRegions, numSolidSides, r_vertex, _s_start_r, _s_opposite_s};
+    return {numBoundaryRegions, numSolidSides, _r_vertex, _s_start_r, _s_opposite_s};
 }
 
 module.exports = deserializeMesh;

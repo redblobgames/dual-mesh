@@ -5,22 +5,22 @@
  */
 
 /**
- * Serialize graph data {r_vertex, _s_start_r, numBoundaryRegions, numSolidSides, _s_opposite_s}
+ * Serialize graph data {_r_vertex, _s_start_r, numBoundaryRegions, numSolidSides, _s_opposite_s}
  * to a binary (arraybuffer), in this format:
  *
  * numRegions: int32
  * numBoundaryRegions: int32 -- s < numBoundaryRegions are on the boundary
  * numSides: int32
  * numSolidSides: int32 -- s >= numSolidSides are ghost
- * r_vertex: Float32Array[2*numRegions] -- the x,y positions
+ * _r_vertex: Float32Array[2*numRegions] -- the x,y positions
  * _s_start_r: UInt{16,32}Array[numSides] -- UInt16 if numRegions < (1<<16)
  * _s_opposite_s: UInt{16,32}Array[numSides] -- UInt32 if numSides < (1<<16)
  */
-function serializeMesh({numBoundaryRegions, numSolidSides, r_vertex, _s_start_r, _s_opposite_s}) {
-    const uintSizeSides = r_vertex.length < (1 << 16)? 2 : 4;
+function serializeMesh({numBoundaryRegions, numSolidSides, _r_vertex, _s_start_r, _s_opposite_s}) {
+    const uintSizeSides = _r_vertex.length < (1 << 16)? 2 : 4;
     const uintSizeOpposites = _s_start_r.length < (1 << 16)? 2 : 4;
     let sizeHeader = 4 + 4 + 4 + 4;
-    let sizeRegions = r_vertex.length * 2 * 4;
+    let sizeRegions = _r_vertex.length * 2 * 4;
     let sizeSides = _s_start_r.length * uintSizeSides;
     let sizeOpposites = _s_opposite_s.length * uintSizeOpposites;
     let arraybuffer = new ArrayBuffer(sizeHeader + sizeRegions + sizeSides + sizeOpposites);
@@ -28,16 +28,16 @@ function serializeMesh({numBoundaryRegions, numSolidSides, r_vertex, _s_start_r,
     let dv = new DataView(arraybuffer);
 
     // header
-    dv.setUint32(0, r_vertex.length);
+    dv.setUint32(0, _r_vertex.length);
     dv.setUint32(4, numBoundaryRegions);
     dv.setUint32(8, _s_start_r.length);
     dv.setUint32(12, numSolidSides);
 
     // region
     let p = 16;
-    for (let i = 0; i < r_vertex.length; i++) {
-        dv.setFloat32(p, r_vertex[i][0]); p += 4;
-        dv.setFloat32(p, r_vertex[i][1]); p += 4;
+    for (let i = 0; i < _r_vertex.length; i++) {
+        dv.setFloat32(p, _r_vertex[i][0]); p += 4;
+        dv.setFloat32(p, _r_vertex[i][1]); p += 4;
     }
 
     // sides
