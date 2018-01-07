@@ -1,6 +1,6 @@
 [[http://unmaintained.tech/badge.svg]]
 
-Dual mesh library for my polygon map generator projects. Feel free to use this, but it's not a stable library and I do make breaking changes.
+Dual mesh library for my polygon map generator projects. Feel free to use this, but it's not a stable library and I do make breaking changes. The create.js interface is the most likely to change in the future.
 
 [[https://redblobgames.github.io/dual-mesh/][Documentation is here]], but it's a bit rough. See [[http://www.redblobgames.com/x/1721-voronoi-alternative/][my blog post about centroid polygons]] and [[http://www.redblobgames.com/x/1722-b-rep-triangle-meshes/][my blog post about the dual mesh data structure]] for the history. Those blog posts used the names “seeds, edges, triangles” but now I call them “regions, sides, triangles”, and I use “ghost” elements to eliminate the boundaries.
 
