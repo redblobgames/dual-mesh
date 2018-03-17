@@ -2,11 +2,12 @@
     "name": "@redblobgames/dual-mesh",
     "version": "1.1.0",
     "private": true,
-    "dependencies": {},
     "devDependencies": {
-        "delaunator": "^1.0.4",
-        "poisson-disk-sampling": "*",
         "tape": "*"
+    },
+    "dependencies": {
+        "delaunator": "^1.0.4",
+        "poisson-disk-sampling": "*"
     },
     "scripts": {
         "test": "node tests.js",
