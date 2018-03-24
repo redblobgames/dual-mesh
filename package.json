@@ -1,16 +1,23 @@
 {
-    "name": "@redblobgames/dual-mesh",
-    "version": "1.1.0",
-    "private": true,
-    "devDependencies": {
-        "tape": "*"
-    },
-    "dependencies": {
-        "delaunator": "^1.0.4",
-        "poisson-disk-sampling": "*"
-    },
-    "scripts": {
-        "test": "node tests.js",
-        "docs": "watchify docs/diagrams.js -o docs/_bundle.js"
-    }
+  "name": "@redblobgames/dual-mesh",
+  "version": "1.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "tape": "*"
+  },
+  "dependencies": {
+    "delaunator": "^1.0.4",
+    "poisson-disk-sampling": "*"
+  },
+  "scripts": {
+    "build": "babel src --out-dir dist",
+    "test": "node tests.js",
+    "docs": "watchify docs/diagrams.js -o docs/_bundle.js"
+  },
+  "babel": {
+    "presets": ["env"]
+  }
 }
