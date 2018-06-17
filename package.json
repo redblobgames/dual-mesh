@@ -1,10 +1,10 @@
 {
     "name": "@redblobgames/dual-mesh",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "private": true,
     "dependencies": {},
     "devDependencies": {
-        "delaunator": "^1.0.4",
+        "delaunator": "^2.0.0",
         "poisson-disk-sampling": "*",
         "tape": "*"
     },

@@ -168,7 +168,7 @@ function createMesh({spacing=Infinity, points=[], random=Math.random}) {
     points.forEach((p) => generator.addPoint(p));
     let allPoints = generator.fill();
 
-    let delaunator = new Delaunator(allPoints);
+    let delaunator = Delaunator.from(allPoints);
     let graph = {
         _r_vertex: allPoints,
         _triangles: delaunator.triangles,
