@@ -21,7 +21,7 @@ tape("encoding and decoding", function(test) {
     test.equal(meshIn.numBoundaryRegions, meshOut.numBoundaryRegions);
     test.equal(meshIn.numSolidSides, meshOut.numSolidSides);
     test.deepEqual(meshIn.sides, meshOut.sides);
-    test.deepEqual(meshIn._s_opposite_s, meshOut._s_opposite_s);
+    test.deepEqual(meshIn._halfedges, meshOut._halfedges);
     // Floats don't survive the round trip because I write them as float32 instead of doubles;
     // I'm testing just a subset of them to reduce noise from tape
     for (let i = 0; i < 5; i++) {

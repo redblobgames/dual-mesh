@@ -46,11 +46,11 @@ class TriangleMesh {
      * constructor takes partial mesh information and fills in the rest; the
      * partial information is generated in create.js or in deserialize.js
      */
-    constructor ({numBoundaryRegions, numSolidSides, _r_vertex, _s_start_r, _s_opposite_s}) {
+    constructor ({numBoundaryRegions, numSolidSides, _r_vertex, _triangles, _halfedges}) {
         Object.assign(this, {numBoundaryRegions, numSolidSides,
-                             _r_vertex, _s_start_r, _s_opposite_s});
+                             _r_vertex, _triangles, _halfedges});
 
-        this.numSides = _s_start_r.length;
+        this.numSides = _triangles.length;
         this.numRegions = _r_vertex.length;
         this.numSolidRegions = this.numRegions - 1;
         this.numTriangles = this.numSides / 3;
@@ -58,16 +58,16 @@ class TriangleMesh {
         
         // Construct an index for finding sides connected to a region
         this._r_any_s = new Int32Array(this.numRegions);
-        for (let s = 0; s < _s_start_r.length; s++) {
-            this._r_any_s[_s_start_r[s]] = this._r_any_s[_s_start_r[s]] || s;
+        for (let s = 0; s < _triangles.length; s++) {
+            this._r_any_s[_triangles[s]] = this._r_any_s[_triangles[s]] || s;
         }
 
         // Construct triangle coordinates
         this._t_vertex = new Array(this.numTriangles);
-        for (let s = 0; s < _s_start_r.length; s += 3) {
-            let a = _r_vertex[_s_start_r[s]],
-                b = _r_vertex[_s_start_r[s+1]],
-                c = _r_vertex[_s_start_r[s+2]];
+        for (let s = 0; s < _triangles.length; s += 3) {
+            let a = _r_vertex[_triangles[s]],
+                b = _r_vertex[_triangles[s+1]],
+                c = _r_vertex[_triangles[s+2]];
             if (this.s_ghost(s)) {
                 // ghost triangle center is just outside the unpaired side
                 let dx = b[0]-a[0], dy = b[1]-a[1];
@@ -87,19 +87,19 @@ class TriangleMesh {
     r_pos(out, r) { out.length = 2; out[0] = this.r_x(r); out[1] = this.r_y(r); return out; }
     t_pos(out, t) { out.length = 2; out[0] = this.t_x(t); out[1] = this.t_y(t); return out; }
     
-    s_begin_r(s)  { return this._s_start_r[s]; }
-    s_end_r(s)    { return this._s_start_r[TriangleMesh.s_next_s(s)]; }
+    s_begin_r(s)  { return this._triangles[s]; }
+    s_end_r(s)    { return this._triangles[TriangleMesh.s_next_s(s)]; }
 
     s_inner_t(s)  { return TriangleMesh.s_to_t(s); }
-    s_outer_t(s)  { return TriangleMesh.s_to_t(this._s_opposite_s[s]); }
+    s_outer_t(s)  { return TriangleMesh.s_to_t(this._halfedges[s]); }
 
     s_next_s(s)   { return TriangleMesh.s_next_s(s); }
     s_prev_s(s)   { return TriangleMesh.s_prev_s(s); }
     
-    s_opposite_s(s) { return this._s_opposite_s[s]; }
+    s_opposite_s(s) { return this._halfedges[s]; }
     
     t_circulate_s(out_s, t) { out_s.length = 3; for (let i = 0; i < 3; i++) { out_s[i] = 3*t + i; } return out_s; }
-    t_circulate_r(out_r, t) { out_r.length = 3; for (let i = 0; i < 3; i++) { out_r[i] = this._s_start_r[3*t+i]; } return out_r; }
+    t_circulate_r(out_r, t) { out_r.length = 3; for (let i = 0; i < 3; i++) { out_r[i] = this._triangles[3*t+i]; } return out_r; }
     t_circulate_t(out_t, t) { out_t.length = 3; for (let i = 0; i < 3; i++) { out_t[i] = this.s_outer_t(3*t+i); } return out_t; }
     
     r_circulate_s(out_s, r) {
@@ -108,7 +108,7 @@ class TriangleMesh {
         out_s.length = 0;
         do {
             out_s.push(s);
-            s = TriangleMesh.s_next_s(this._s_opposite_s[s]);
+            s = TriangleMesh.s_next_s(this._halfedges[s]);
         } while (s != s0);
         return out_s;
     }
@@ -119,7 +119,7 @@ class TriangleMesh {
         out_r.length = 0;
         do {
             out_r.push(this.s_end_r(s));
-            s = TriangleMesh.s_next_s(this._s_opposite_s[s]);
+            s = TriangleMesh.s_next_s(this._halfedges[s]);
         } while (s != s0);
         return out_r;
     }
@@ -130,7 +130,7 @@ class TriangleMesh {
         out_t.length = 0;
         do {
             out_t.push(TriangleMesh.s_to_t(s));
-            s = TriangleMesh.s_next_s(this._s_opposite_s[s]);
+            s = TriangleMesh.s_next_s(this._halfedges[s]);
         } while (s != s0);
         return out_t;
     }
