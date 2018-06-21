@@ -10,8 +10,8 @@
 
 'use strict';
 
-let Poisson = require('poisson-disk-sampling'); // MIT licensed
-let Delaunator = require('delaunator');        // ISC licensed
+let Delaunator   = require('delaunator');        // ISC licensed
+let TriangleMesh = require('./');
 
 function s_next_s(s) { return (s % 3 == 2) ? s-2 : s+1; }
 
@@ -50,7 +50,7 @@ function checkTriangleInequality({_r_vertex, _triangles, _halfedges}) {
     // worried about speed right now
     
     // TODO: consider adding circumcenters of skinny triangles to the point set
-    if (createMesh.PRINT_WARNINGS && count > 0) {
+    if (count > 0) {
         console.log('  bad angles:', summary.join(" "));
     }
 }
@@ -105,6 +105,7 @@ function addGhostStructure({_r_vertex, _triangles, _halfedges}) {
     
     let numUnpairedSides = 0, firstUnpairedEdge = -1;
     let r_unpaired_s = []; // seed to side
+    // TODO: get these from the delaunator hull
     for (let s = 0; s < numSolidSides; s++) {
         if (_halfedges[s] === -1) {
             numUnpairedSides++;
@@ -146,45 +147,79 @@ function addGhostStructure({_r_vertex, _triangles, _halfedges}) {
 }
 
 
+
 /**
- * Create mesh data in a 1000x1000 space for passing to DualMesh
+ * Build a dual mesh from points, with ghost triangles around the exterior.
  *
- * Either pass {spacing, random} to choose random spaced points with
- * boundary points, or pass {points} to use an existing set of points
- * without added boundary points. Or pass {spacing, points, random} to 
- * use a given set of points, plus random spaced points, plus boundary
- * points.
+ * The builder assumes 0 ≤ x < 1000, 0 ≤ y < 1000
+ *
+ * Options:
+ *   - To have equally spaced points added around the 1000x1000 boundary,
+ *     pass in boundarySpacing > 0 with the spacing value. If using Poisson
+ *     disc points, I recommend 1.5 times the spacing used for Poisson disc.
+ *
+ * Phases:
+ *   - Your own set of points
+ *   - Poisson disc points
  *
  * The mesh generator runs some sanity checks but does not correct the
  * generated points.
  *
- * This interface is insufficient to cover all the possible variants
- * so it is SUBJECT TO CHANGE.
+ * Examples:
+ *
+ * Build a mesh with poisson disc points and a boundary:
+ *
+ * new MeshBuilder({boundarySpacing: 150})
+ *    .addPoisson(Poisson, 100)
+ *    .create()
  */
-function createMesh({spacing=Infinity, points=[], random=Math.random}) {
-    let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
-    let boundaryPoints = isFinite(spacing)? addBoundaryPoints(spacing, 1000) : [];
-    boundaryPoints.forEach((p) => generator.addPoint(p));
-    points.forEach((p) => generator.addPoint(p));
-    let allPoints = generator.fill();
+class MeshBuilder {
+    /** If boundarySpacing > 0 there will be a boundary added around the 1000x1000 area */
+    constructor ({boundarySpacing=0} = {}) {
+        let boundaryPoints = boundarySpacing > 0 ? addBoundaryPoints(boundarySpacing, 1000) : [];
+        this.points = boundaryPoints;
+        this.numBoundaryRegions = boundaryPoints.length;
+    }
 
-    let delaunator = Delaunator.from(allPoints);
-    let graph = {
-        _r_vertex: allPoints,
-        _triangles: delaunator.triangles,
-        _halfedges: delaunator.halfedges
-    };
+    /** Points should be [x, y] */
+    addPoints(newPoints) {
+        this.points.push.apply(this.points, newPoints);
+        return this;
+    }
 
-    checkPointInequality(graph);
-    checkTriangleInequality(graph);
-    
-    graph = addGhostStructure(graph);
-    graph.numBoundaryRegions = boundaryPoints.length;
-    checkMeshConnectivity(graph);
+    /** Pass in the constructor from the poisson-disk-sampling module */
+    addPoisson(Poisson, spacing, random=Math.random) {
+        let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
+        this.points.forEach(p => generator.addPoint(p));
+        this.points = generator.fill();
+        return this;
+    }
 
-    return graph;
+    /** Build and return a TriangleMesh */
+    create(runChecks=false) {
+        // TODO: use Float32Array instead of this, so that we can
+        // construct directly from points read in from a file
+        let delaunator = Delaunator.from(this.points);
+        let graph = {
+            _r_vertex: this.points,
+            _triangles: delaunator.triangles,
+            _halfedges: delaunator.halfedges
+        };
+
+        if (runChecks) {
+            checkPointInequality(graph);
+            checkTriangleInequality(graph);
+        }
+        
+        graph = addGhostStructure(graph);
+        graph.numBoundaryRegions = this.numBoundaryRegions;
+        if (runChecks) {
+            checkMeshConnectivity(graph);
+        }
+
+        return new TriangleMesh(graph);
+    }
 }
 
 
-createMesh.PRINT_WARNINGS = false;
-module.exports = createMesh;
+module.exports = MeshBuilder;

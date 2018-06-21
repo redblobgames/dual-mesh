@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
 /*
  * From https://github.com/redblobgames/dual-mesh
  * Copyright 2017 Red Blob Games <redblobgames@gmail.com>
@@ -11,13 +11,13 @@
 
 'use strict';
 
-let Poisson = require('poisson-disk-sampling'); // MIT licensed
-let Delaunator = require('delaunator');        // ISC licensed
+let Delaunator   = require('delaunator');        // ISC licensed
+let TriangleMesh = require('./');
 
 function s_next_s(s) { return (s % 3 == 2) ? s-2 : s+1; }
 
 
-function checkPointInequality({r_vertex, _s_start_r, _s_opposite_s}) {
+function checkPointInequality({_r_vertex, _triangles, _halfedges}) {
     // TODO: check for collinear vertices. Around each red point P if
     // there's a point Q and R both connected to it, and the angle P→Q and
     // the angle P→R are 180° apart, then there's collinearity. This would
@@ -25,18 +25,18 @@ function checkPointInequality({r_vertex, _s_start_r, _s_opposite_s}) {
 }
 
 
-function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
+function checkTriangleInequality({_r_vertex, _triangles, _halfedges}) {
     // check for skinny triangles
     const badAngleLimit = 30;
     let summary = new Array(badAngleLimit).fill(0);
     let count = 0;
-    for (let s = 0; s < _s_start_r.length; s++) {
-        let r0 = _s_start_r[s],
-            r1 = _s_start_r[s_next_s(s)],
-            r2 = _s_start_r[s_next_s(s_next_s(s))];
-        let p0 = r_vertex[r0],
-            p1 = r_vertex[r1],
-            p2 = r_vertex[r2];
+    for (let s = 0; s < _triangles.length; s++) {
+        let r0 = _triangles[s],
+            r1 = _triangles[s_next_s(s)],
+            r2 = _triangles[s_next_s(s_next_s(s))];
+        let p0 = _r_vertex[r0],
+            p1 = _r_vertex[r1],
+            p2 = _r_vertex[r2];
         let d0 = [p0[0]-p1[0], p0[1]-p1[1]];
         let d2 = [p2[0]-p1[0], p2[1]-p1[1]];
         let dotProduct = d0[0] * d2[0] + d0[1] + d2[1];
@@ -51,27 +51,27 @@ function checkTriangleInequality({r_vertex, _s_start_r, _s_opposite_s}) {
     // worried about speed right now
     
     // TODO: consider adding circumcenters of skinny triangles to the point set
-    if (createMesh.PRINT_WARNINGS && count > 0) {
+    if (count > 0) {
         console.log('  bad angles:', summary.join(" "));
     }
 }
 
 
-function checkMeshConnectivity({r_vertex, _s_start_r, _s_opposite_s}) {
+function checkMeshConnectivity({_r_vertex, _triangles, _halfedges}) {
     // 1. make sure each side's opposite is back to itself
     // 2. make sure region-circulating starting from each side works
-    let ghost_r = r_vertex.length - 1, out_s = [];
-    for (let s0 = 0; s0 < _s_start_r.length; s0++) {
-        if (_s_opposite_s[_s_opposite_s[s0]] !== s0) {
-            console.log(`FAIL _s_opposite_s[_s_opposite_s[${s0}]] !== ${s0}`);
+    let ghost_r = _r_vertex.length - 1, out_s = [];
+    for (let s0 = 0; s0 < _triangles.length; s0++) {
+        if (_halfedges[_halfedges[s0]] !== s0) {
+            console.log(`FAIL _halfedges[_halfedges[${s0}]] !== ${s0}`);
         }
         let s = s0, count = 0;
         out_s.length = 0;
         do {
             count++; out_s.push(s);
-            s = s_next_s(_s_opposite_s[s]);
-            if (count > 100 && _s_start_r[s0] !== ghost_r) {
-                console.log(`FAIL to circulate around region with start side=${s0} from region ${_s_start_r[s0]} to ${_s_start_r[s_next_s(s0)]}, out_s=${out_s}`);
+            s = s_next_s(_halfedges[s]);
+            if (count > 100 && _triangles[s0] !== ghost_r) {
+                console.log(`FAIL to circulate around region with start side=${s0} from region ${_triangles[s0]} to ${_triangles[s_next_s(s0)]}, out_s=${out_s}`);
                 break;
             }
         } while (s !== s0);
@@ -100,25 +100,26 @@ function addBoundaryPoints(spacing, size) {
 }
 
 
-function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
-    const numSolidSides = _s_start_r.length;
-    const ghost_r = r_vertex.length;
+function addGhostStructure({_r_vertex, _triangles, _halfedges}) {
+    const numSolidSides = _triangles.length;
+    const ghost_r = _r_vertex.length;
     
     let numUnpairedSides = 0, firstUnpairedEdge = -1;
     let r_unpaired_s = []; // seed to side
+    // TODO: get these from the delaunator hull
     for (let s = 0; s < numSolidSides; s++) {
-        if (_s_opposite_s[s] === -1) {
+        if (_halfedges[s] === -1) {
             numUnpairedSides++;
-            r_unpaired_s[_s_start_r[s]] = s;
+            r_unpaired_s[_triangles[s]] = s;
             firstUnpairedEdge = s;
         }
     }
 
-    let r_newvertex = r_vertex.concat([[500, 500]]);
+    let r_newvertex = _r_vertex.concat([[500, 500]]);
     let s_newstart_r = new Int32Array(numSolidSides + 3 * numUnpairedSides);
-    s_newstart_r.set(_s_start_r);
+    s_newstart_r.set(_triangles);
     let s_newopposite_s = new Int32Array(numSolidSides + 3 * numUnpairedSides);
-    s_newopposite_s.set(_s_opposite_s);
+    s_newopposite_s.set(_halfedges);
 
     for (let i = 0, s = firstUnpairedEdge;
          i < numUnpairedSides;
@@ -140,57 +141,91 @@ function addGhostStructure({r_vertex, _s_start_r, _s_opposite_s}) {
 
     return {
         numSolidSides,
-        r_vertex: r_newvertex,
-        _s_start_r: s_newstart_r,
-        _s_opposite_s: s_newopposite_s
+        _r_vertex: r_newvertex,
+        _triangles: s_newstart_r,
+        _halfedges: s_newopposite_s
     };
 }
 
 
+
 /**
- * Create mesh data in a 1000x1000 space for passing to DualMesh
+ * Build a dual mesh from points, with ghost triangles around the exterior.
  *
- * Either pass {spacing, random} to choose random spaced points with
- * boundary points, or pass {points} to use an existing set of points
- * without added boundary points. Or pass {spacing, points, random} to 
- * use a given set of points, plus random spaced points, plus boundary
- * points.
+ * The builder assumes 0 ≤ x < 1000, 0 ≤ y < 1000
+ *
+ * Options:
+ *   - To have equally spaced points added around the 1000x1000 boundary,
+ *     pass in boundarySpacing > 0 with the spacing value. If using Poisson
+ *     disc points, I recommend 1.5 times the spacing used for Poisson disc.
+ *
+ * Phases:
+ *   - Your own set of points
+ *   - Poisson disc points
  *
  * The mesh generator runs some sanity checks but does not correct the
  * generated points.
  *
- * This interface is insufficient to cover all the possible variants
- * so it is SUBJECT TO CHANGE.
+ * Examples:
+ *
+ * Build a mesh with poisson disc points and a boundary:
+ *
+ * new MeshBuilder({boundarySpacing: 150})
+ *    .addPoisson(Poisson, 100)
+ *    .create()
  */
-function createMesh({spacing=Infinity, points=[], random=Math.random}) {
-    let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
-    let boundaryPoints = isFinite(spacing)? addBoundaryPoints(spacing, 1000) : [];
-    boundaryPoints.forEach((p) => generator.addPoint(p));
-    points.forEach((p) => generator.addPoint(p));
-    let allPoints = generator.fill();
+class MeshBuilder {
+    /** If boundarySpacing > 0 there will be a boundary added around the 1000x1000 area */
+    constructor ({boundarySpacing=0} = {}) {
+        let boundaryPoints = boundarySpacing > 0 ? addBoundaryPoints(boundarySpacing, 1000) : [];
+        this.points = boundaryPoints;
+        this.numBoundaryRegions = boundaryPoints.length;
+    }
 
-    let delaunator = new Delaunator(allPoints);
-    let graph = {
-        r_vertex: allPoints,
-        _s_start_r: delaunator.triangles,
-        _s_opposite_s: delaunator.halfedges
-    };
+    /** Points should be [x, y] */
+    addPoints(newPoints) {
+        this.points.push.apply(this.points, newPoints);
+        return this;
+    }
 
-    checkPointInequality(graph);
-    checkTriangleInequality(graph);
-    
-    graph = addGhostStructure(graph);
-    graph.numBoundaryRegions = boundaryPoints.length;
-    checkMeshConnectivity(graph);
+    /** Pass in the constructor from the poisson-disk-sampling module */
+    addPoisson(Poisson, spacing, random=Math.random) {
+        let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
+        this.points.forEach(p => generator.addPoint(p));
+        this.points = generator.fill();
+        return this;
+    }
 
-    return graph;
+    /** Build and return a TriangleMesh */
+    create(runChecks=false) {
+        // TODO: use Float32Array instead of this, so that we can
+        // construct directly from points read in from a file
+        let delaunator = Delaunator.from(this.points);
+        let graph = {
+            _r_vertex: this.points,
+            _triangles: delaunator.triangles,
+            _halfedges: delaunator.halfedges
+        };
+
+        if (runChecks) {
+            checkPointInequality(graph);
+            checkTriangleInequality(graph);
+        }
+        
+        graph = addGhostStructure(graph);
+        graph.numBoundaryRegions = this.numBoundaryRegions;
+        if (runChecks) {
+            checkMeshConnectivity(graph);
+        }
+
+        return new TriangleMesh(graph);
+    }
 }
 
 
-createMesh.PRINT_WARNINGS = false;
-module.exports = createMesh;
+module.exports = MeshBuilder;
 
-},{"delaunator":4,"poisson-disk-sampling":9}],2:[function(require,module,exports){
+},{"./":3,"delaunator":4}],2:[function(require,module,exports){
 /*
  * From https://github.com/redblobgames/dual-mesh
  * Copyright 2017 Red Blob Games <redblobgames@gmail.com>
@@ -199,7 +234,8 @@ module.exports = createMesh;
 'use strict';
 
 let DualMesh = require('../');
-let createMesh = require('../create');
+let MeshBuilder = require('../create');
+let Poisson = require('poisson-disk-sampling');
 
 const seeds1 = [
     [250, 30], [100, 260], [400, 260], [550, 30]
@@ -211,9 +247,16 @@ const seeds2 = [
     [50, 220], [550, 240],
 ];
 
-let G0 = new DualMesh(createMesh({spacing: 50}));
-let G1 = new DualMesh(createMesh({points: seeds1}));
-let G2 = new DualMesh(createMesh({points: seeds2}));
+let G0 = new MeshBuilder({boundarySpacing: 75})
+    .addPoisson(Poisson, 50)
+    .create();
+let G1 = new MeshBuilder()
+    .addPoints(seeds1)
+    .create();
+let G2 = new MeshBuilder()
+    .addPoints(seeds2)
+    .create();
+
 
 function interpolate(p, q, t) {
     return [p[0] * (1-t) + q[0] * t, p[1] * (1-t) + q[1] * t];
@@ -234,22 +277,22 @@ Vue.component('a-side-black-edges', {
     props: ['graph', 'alpha'],
     template: `
     <g>
-      <path v-for="(_,s) in graph.numSides" key="s" 
-         :class="'b-side' + (graph.s_ghost(s)? ' ghost' : '')" 
+      <path v-for="(_,s) in graph.numSides" :key="s"
+         :class="'b-side' + (graph.s_ghost(s)? ' ghost' : '')"
          :d="b_side(s)"/>
     </g>
 `,
     methods: {
         b_side: function(s) {
             const alpha = this.alpha || 0.0;
-            let begin = this.graph.r_vertex[this.graph.s_begin_r(s)];
-            let end = this.graph.r_vertex[this.graph.s_end_r(s)];
+            let begin = this.graph.r_pos([], this.graph.s_begin_r(s));
+            let end = this.graph.r_pos([], this.graph.s_end_r(s));
             if (this.graph.r_ghost(this.graph.s_begin_r(s))) {
                 begin = extrapolate_from_center(end, [300, 150]);
             } else if (this.graph.r_ghost(this.graph.s_end_r(s))) {
                 end = extrapolate_from_center(begin, [300, 150]);
             }
-            let center = this.graph.t_vertex[this.graph.s_inner_t(s)];
+            let center = this.graph.t_pos([], this.graph.s_inner_t(s));
             begin = interpolate(begin, center, alpha);
             end = interpolate(end, center, alpha);
             return `M ${begin} L ${end}`;
@@ -261,17 +304,17 @@ Vue.component('a-side-white-edges', {
     props: ['graph', 'alpha'],
     template: `
     <g>
-      <path v-for="(_,s) in graph.numSides" key="s" 
-        :class="'w-side' + ((graph.t_ghost(graph.s_outer_t(s)) || graph.s_ghost(s))? ' ghost' : '')" 
+      <path v-for="(_,s) in graph.numSides" :key="s"
+        :class="'w-side' + ((graph.t_ghost(graph.s_outer_t(s)) || graph.s_ghost(s))? ' ghost' : '')"
         :d="w_side(s)"/>
     </g>
 `,
     methods: {
         w_side: function(s) {
             const alpha = this.alpha || 0.0;
-            let begin = this.graph.t_vertex[this.graph.s_inner_t(s)];
-            let end = this.graph.t_vertex[this.graph.s_outer_t(s)];
-            let center = this.graph.r_vertex[this.graph.s_begin_r(s)];
+            let begin = this.graph.t_pos([], this.graph.s_inner_t(s));
+            let end = this.graph.t_pos([], this.graph.s_outer_t(s));
+            let center = this.graph.r_pos([], this.graph.s_begin_r(s));
             begin = interpolate(begin, center, alpha);
             end = interpolate(end, center, alpha);
             return `M ${begin} L ${end}`;
@@ -283,11 +326,11 @@ Vue.component('a-side-labels', {
     props: ['graph'],
     template: `
     <g>
-      <a-label v-for="(_,s) in graph.numSolidSides" key="s"
+      <a-label v-for="(_,s) in graph.numSolidSides" :key="s"
         class="s" 
         dy="7"
-        :at="interpolate(graph.r_vertex[graph.s_begin_r(s)], 
-                         graph.t_vertex[graph.s_inner_t(s)], 
+        :at="interpolate(graph.r_pos([], graph.s_begin_r(s)), 
+                         graph.t_pos([], graph.s_inner_t(s)),
                          0.4)">
       s{{s}}
       </a-label>
@@ -300,12 +343,12 @@ Vue.component('a-region-points', {
     props: ['graph', 'hover', 'radius'],
     template: `
     <g>
-      <circle v-for="(_,r) in graph.numSolidRegions" key="r"
+      <circle v-for="(_,r) in graph.numSolidRegions" :key="r"
         class="r"
         :r="radius || 10"
         @mouseover="hover('r'+r)" 
         @touchstart.passive="hover('r'+r)"
-        :transform="\`translate($\{graph.r_vertex[r]})\`"/>
+        :transform="\`translate($\{graph.r_pos([], r)})\`"/>
     </g>
 `,
 });
@@ -314,9 +357,9 @@ Vue.component('a-region-labels', {
     props: ['graph'],
     template: `
     <g>
-      <a-label v-for="(_,r) in graph.numSolidRegions" key="r"
+      <a-label v-for="(_,r) in graph.numSolidRegions" :key="r"
         class="r" 
-        :dy="graph.r_vertex[r][1] > 150? 25 : -15" :at="graph.r_vertex[r]">
+        :dy="graph.r_y(r) > 150? 25 : -15" :at="graph.r_pos([], r)">
         r{{r}}
       </a-label>
     </g>
@@ -327,12 +370,12 @@ Vue.component('a-triangle-points', {
     props: ['graph', 'hover', 'radius'],
     template: `
       <g>
-        <circle v-for="(_,t) in graph.numTriangles" key="t"
+        <circle v-for="(_,t) in graph.numTriangles" :key="t"
           :class="'t' + (graph.t_ghost(t)? ' ghost':'')" 
           :r="radius || 7"
           @mouseover="hover('t'+t)" 
           @touchstart.passive="hover('t'+t)"
-          :transform="\`translate($\{graph.t_vertex[t]})\`"/>
+          :transform="\`translate($\{graph.t_pos([], t)})\`"/>
       </g>
 `,
 });
@@ -341,10 +384,10 @@ Vue.component('a-triangle-labels', {
     props: ['graph'],
     template: `
       <g>
-        <a-label v-for="(_,t) in graph.numSolidTriangles" key="t"
+        <a-label v-for="(_,t) in graph.numSolidTriangles" :key="t"
           class="t" 
           dy="25" 
-          :at="graph.t_vertex[t]">
+          :at="graph.t_pos([], t)">
           t{{t}}
         </a-label>
       </g>
@@ -384,7 +427,7 @@ for (let diagram of document.querySelectorAll("div.diagram-g2")) {
     makeDiagram(diagram, G2);
 }
 
-},{"../":3,"../create":1}],3:[function(require,module,exports){
+},{"../":3,"../create":1,"poisson-disk-sampling":9}],3:[function(require,module,exports){
 /*
  * From https://github.com/redblobgames/dual-mesh
  * Copyright 2017 Red Blob Games <redblobgames@gmail.com>
@@ -433,49 +476,60 @@ class TriangleMesh {
      * constructor takes partial mesh information and fills in the rest; the
      * partial information is generated in create.js or in deserialize.js
      */
-    constructor ({numBoundaryRegions, numSolidSides, r_vertex, _s_start_r, _s_opposite_s}) {
-        Object.assign(this, {numBoundaryRegions, numSolidSides, r_vertex, _s_start_r, _s_opposite_s});
+    constructor ({numBoundaryRegions, numSolidSides, _r_vertex, _triangles, _halfedges}) {
+        Object.assign(this, {numBoundaryRegions, numSolidSides,
+                             _r_vertex, _triangles, _halfedges});
 
-        this.numSides = this._s_start_r.length;
-        this.numRegions = this.r_vertex.length;
+        this.numSides = _triangles.length;
+        this.numRegions = _r_vertex.length;
         this.numSolidRegions = this.numRegions - 1;
         this.numTriangles = this.numSides / 3;
         this.numSolidTriangles = this.numSolidSides / 3;
         
         // Construct an index for finding sides connected to a region
         this._r_any_s = new Int32Array(this.numRegions);
-        for (let s = 0; s < this._s_start_r.length; s++) {
-            this._r_any_s[this._s_start_r[s]] = this._r_any_s[this._s_start_r[s]] || s;
+        for (let s = 0; s < _triangles.length; s++) {
+            this._r_any_s[_triangles[s]] = this._r_any_s[_triangles[s]] || s;
         }
 
         // Construct triangle coordinates
-        this.t_vertex = new Array(this.numTriangles);
-        for (let s = 0; s < this._s_start_r.length; s += 3) {
-            let a = this.r_vertex[this._s_start_r[s]],
-                b = this.r_vertex[this._s_start_r[s+1]],
-                c = this.r_vertex[this._s_start_r[s+2]];
+        this._t_vertex = new Array(this.numTriangles);
+        for (let s = 0; s < _triangles.length; s += 3) {
+            let a = _r_vertex[_triangles[s]],
+                b = _r_vertex[_triangles[s+1]],
+                c = _r_vertex[_triangles[s+2]];
             if (this.s_ghost(s)) {
                 // ghost triangle center is just outside the unpaired side
                 let dx = b[0]-a[0], dy = b[1]-a[1];
-                this.t_vertex[s/3] = [a[0] + 0.5*(dx+dy), a[1] + 0.5*(dy-dx)];
+                this._t_vertex[s/3] = [a[0] + 0.5*(dx+dy), a[1] + 0.5*(dy-dx)];
             } else {
                 // solid triangle center is at the centroid
-                this.t_vertex[s/3] = [(a[0] + b[0] + c[0])/3,
+                this._t_vertex[s/3] = [(a[0] + b[0] + c[0])/3,
                                      (a[1] + b[1] + c[1])/3];
             }
         }
     }
 
-    s_begin_r(s)  { return this._s_start_r[s]; }
-    s_end_r(s)    { return this._s_start_r[TriangleMesh.s_next_s(s)]; }
+    r_x(r)        { return this._r_vertex[r][0]; }
+    r_y(r)        { return this._r_vertex[r][1]; }
+    t_x(r)        { return this._t_vertex[r][0]; }
+    t_y(r)        { return this._t_vertex[r][1]; }
+    r_pos(out, r) { out.length = 2; out[0] = this.r_x(r); out[1] = this.r_y(r); return out; }
+    t_pos(out, t) { out.length = 2; out[0] = this.t_x(t); out[1] = this.t_y(t); return out; }
+    
+    s_begin_r(s)  { return this._triangles[s]; }
+    s_end_r(s)    { return this._triangles[TriangleMesh.s_next_s(s)]; }
 
     s_inner_t(s)  { return TriangleMesh.s_to_t(s); }
-    s_outer_t(s)  { return TriangleMesh.s_to_t(this._s_opposite_s[s]); }
+    s_outer_t(s)  { return TriangleMesh.s_to_t(this._halfedges[s]); }
 
-    s_opposite_s(s) { return this._s_opposite_s[s]; }
+    s_next_s(s)   { return TriangleMesh.s_next_s(s); }
+    s_prev_s(s)   { return TriangleMesh.s_prev_s(s); }
+    
+    s_opposite_s(s) { return this._halfedges[s]; }
     
     t_circulate_s(out_s, t) { out_s.length = 3; for (let i = 0; i < 3; i++) { out_s[i] = 3*t + i; } return out_s; }
-    t_circulate_r(out_r, t) { out_r.length = 3; for (let i = 0; i < 3; i++) { out_r[i] = this._s_start_r[3*t+i]; } return out_r; }
+    t_circulate_r(out_r, t) { out_r.length = 3; for (let i = 0; i < 3; i++) { out_r[i] = this._triangles[3*t+i]; } return out_r; }
     t_circulate_t(out_t, t) { out_t.length = 3; for (let i = 0; i < 3; i++) { out_t[i] = this.s_outer_t(3*t+i); } return out_t; }
     
     r_circulate_s(out_s, r) {
@@ -484,7 +538,7 @@ class TriangleMesh {
         out_s.length = 0;
         do {
             out_s.push(s);
-            s = TriangleMesh.s_next_s(this._s_opposite_s[s]);
+            s = TriangleMesh.s_next_s(this._halfedges[s]);
         } while (s != s0);
         return out_s;
     }
@@ -495,7 +549,7 @@ class TriangleMesh {
         out_r.length = 0;
         do {
             out_r.push(this.s_end_r(s));
-            s = TriangleMesh.s_next_s(this._s_opposite_s[s]);
+            s = TriangleMesh.s_next_s(this._halfedges[s]);
         } while (s != s0);
         return out_r;
     }
@@ -506,7 +560,7 @@ class TriangleMesh {
         out_t.length = 0;
         do {
             out_t.push(TriangleMesh.s_to_t(s));
-            s = TriangleMesh.s_next_s(this._s_opposite_s[s]);
+            s = TriangleMesh.s_next_s(this._halfedges[s]);
         } while (s != s0);
         return out_t;
     }
@@ -522,445 +576,465 @@ class TriangleMesh {
 module.exports = TriangleMesh;
 
 },{}],4:[function(require,module,exports){
-'use strict';
+(function (global, factory) {
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+    typeof define === 'function' && define.amd ? define(factory) :
+    (global.Delaunator = factory());
+}(this, (function () { 'use strict';
 
-module.exports = Delaunator;
+    Delaunator.from = function (points, getX, getY) {
+        if (!getX) getX = defaultGetX;
+        if (!getY) getY = defaultGetY;
 
-function Delaunator(points, getX, getY) {
+        var n = points.length;
+        var coords = new Float64Array(n * 2);
 
-    if (!getX) getX = defaultGetX;
-    if (!getY) getY = defaultGetY;
-
-    var minX = Infinity;
-    var minY = Infinity;
-    var maxX = -Infinity;
-    var maxY = -Infinity;
-
-    var coords = this.coords = [];
-    var ids = this.ids = new Uint32Array(points.length);
-
-    for (var i = 0; i < points.length; i++) {
-        var p = points[i];
-        var x = getX(p);
-        var y = getY(p);
-        ids[i] = i;
-        coords[2 * i] = x;
-        coords[2 * i + 1] = y;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-    }
-
-    var cx = (minX + maxX) / 2;
-    var cy = (minY + maxY) / 2;
-
-    var minDist = Infinity;
-    var i0, i1, i2;
-
-    // pick a seed point close to the centroid
-    for (i = 0; i < points.length; i++) {
-        var d = dist(cx, cy, coords[2 * i], coords[2 * i + 1]);
-        if (d < minDist) {
-            i0 = i;
-            minDist = d;
+        for (var i = 0; i < n; i++) {
+            var p = points[i];
+            coords[2 * i] = getX(p);
+            coords[2 * i + 1] = getY(p);
         }
-    }
 
-    minDist = Infinity;
+        return new Delaunator(coords);
+    };
 
-    // find the point closest to the seed
-    for (i = 0; i < points.length; i++) {
-        if (i === i0) continue;
-        d = dist(coords[2 * i0], coords[2 * i0 + 1], coords[2 * i], coords[2 * i + 1]);
-        if (d < minDist && d > 0) {
-            i1 = i;
-            minDist = d;
+    function Delaunator(coords) {
+        if (!ArrayBuffer.isView(coords)) throw new Error('Expected coords to be a typed array.');
+
+        var minX = Infinity;
+        var minY = Infinity;
+        var maxX = -Infinity;
+        var maxY = -Infinity;
+
+        var n = coords.length >> 1;
+        var ids = this.ids = new Uint32Array(n);
+
+        this.coords = coords;
+
+        for (var i = 0; i < n; i++) {
+            var x = coords[2 * i];
+            var y = coords[2 * i + 1];
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+            ids[i] = i;
         }
-    }
 
-    var minRadius = Infinity;
+        var cx = (minX + maxX) / 2;
+        var cy = (minY + maxY) / 2;
 
-    // find the third point which forms the smallest circumcircle with the first two
-    for (i = 0; i < points.length; i++) {
-        if (i === i0 || i === i1) continue;
+        var minDist = Infinity;
+        var i0, i1, i2;
 
-        var r = circumradius(
-            coords[2 * i0], coords[2 * i0 + 1],
+        // pick a seed point close to the centroid
+        for (i = 0; i < n; i++) {
+            var d = dist(cx, cy, coords[2 * i], coords[2 * i + 1]);
+            if (d < minDist) {
+                i0 = i;
+                minDist = d;
+            }
+        }
+
+        minDist = Infinity;
+
+        // find the point closest to the seed
+        for (i = 0; i < n; i++) {
+            if (i === i0) continue;
+            d = dist(coords[2 * i0], coords[2 * i0 + 1], coords[2 * i], coords[2 * i + 1]);
+            if (d < minDist && d > 0) {
+                i1 = i;
+                minDist = d;
+            }
+        }
+
+        var minRadius = Infinity;
+
+        // find the third point which forms the smallest circumcircle with the first two
+        for (i = 0; i < n; i++) {
+            if (i === i0 || i === i1) continue;
+
+            var r = circumradius(
+                coords[2 * i0], coords[2 * i0 + 1],
+                coords[2 * i1], coords[2 * i1 + 1],
+                coords[2 * i], coords[2 * i + 1]);
+
+            if (r < minRadius) {
+                i2 = i;
+                minRadius = r;
+            }
+        }
+
+        if (minRadius === Infinity) {
+            throw new Error('No Delaunay triangulation exists for this input.');
+        }
+
+        // swap the order of the seed points for counter-clockwise orientation
+        if (area(coords[2 * i0], coords[2 * i0 + 1],
             coords[2 * i1], coords[2 * i1 + 1],
-            coords[2 * i], coords[2 * i + 1]);
+            coords[2 * i2], coords[2 * i2 + 1]) < 0) {
 
-        if (r < minRadius) {
-            i2 = i;
-            minRadius = r;
-        }
-    }
-
-    if (minRadius === Infinity) {
-        throw new Error('No Delaunay triangulation exists for this input.');
-    }
-
-    // swap the order of the seed points for counter-clockwise orientation
-    if (area(coords[2 * i0], coords[2 * i0 + 1],
-        coords[2 * i1], coords[2 * i1 + 1],
-        coords[2 * i2], coords[2 * i2 + 1]) < 0) {
-
-        var tmp = i1;
-        i1 = i2;
-        i2 = tmp;
-    }
-
-    var i0x = coords[2 * i0];
-    var i0y = coords[2 * i0 + 1];
-    var i1x = coords[2 * i1];
-    var i1y = coords[2 * i1 + 1];
-    var i2x = coords[2 * i2];
-    var i2y = coords[2 * i2 + 1];
-
-    var center = circumcenter(i0x, i0y, i1x, i1y, i2x, i2y);
-    this._cx = center.x;
-    this._cy = center.y;
-
-    // sort the points by distance from the seed triangle circumcenter
-    quicksort(ids, coords, 0, ids.length - 1, center.x, center.y);
-
-    // initialize a hash table for storing edges of the advancing convex hull
-    this._hashSize = Math.ceil(Math.sqrt(points.length));
-    this._hash = [];
-    for (i = 0; i < this._hashSize; i++) this._hash[i] = null;
-
-    // initialize a circular doubly-linked list that will hold an advancing convex hull
-    var e = this.hull = insertNode(coords, i0);
-    this._hashEdge(e);
-    e.t = 0;
-    e = insertNode(coords, i1, e);
-    this._hashEdge(e);
-    e.t = 1;
-    e = insertNode(coords, i2, e);
-    this._hashEdge(e);
-    e.t = 2;
-
-    var maxTriangles = 2 * points.length - 5;
-    var triangles = this.triangles = new Uint32Array(maxTriangles * 3);
-    var halfedges = this.halfedges = new Int32Array(maxTriangles * 3);
-
-    this.trianglesLen = 0;
-
-    this._addTriangle(i0, i1, i2, -1, -1, -1);
-
-    var xp, yp;
-    for (var k = 0; k < ids.length; k++) {
-        i = ids[k];
-        x = coords[2 * i];
-        y = coords[2 * i + 1];
-
-        // skip duplicate points
-        if (x === xp && y === yp) continue;
-        xp = x;
-        yp = y;
-
-        // skip seed triangle points
-        if ((x === i0x && y === i0y) ||
-            (x === i1x && y === i1y) ||
-            (x === i2x && y === i2y)) continue;
-
-        // find a visible edge on the convex hull using edge hash
-        var startKey = this._hashKey(x, y);
-        var key = startKey;
-        var start;
-        do {
-            start = this._hash[key];
-            key = (key + 1) % this._hashSize;
-        } while ((!start || start.removed) && key !== startKey);
-
-        e = start;
-        while (area(x, y, e.x, e.y, e.next.x, e.next.y) >= 0) {
-            e = e.next;
-            if (e === start) {
-                throw new Error('Something is wrong with the input points.');
-            }
+            var tmp = i1;
+            i1 = i2;
+            i2 = tmp;
         }
 
-        var walkBack = e === start;
+        var i0x = coords[2 * i0];
+        var i0y = coords[2 * i0 + 1];
+        var i1x = coords[2 * i1];
+        var i1y = coords[2 * i1 + 1];
+        var i2x = coords[2 * i2];
+        var i2y = coords[2 * i2 + 1];
 
-        // add the first triangle from the point
-        var t = this._addTriangle(e.i, i, e.next.i, -1, -1, e.t);
+        var center = circumcenter(i0x, i0y, i1x, i1y, i2x, i2y);
+        this._cx = center.x;
+        this._cy = center.y;
 
-        e.t = t; // keep track of boundary triangles on the hull
-        e = insertNode(coords, i, e);
+        // sort the points by distance from the seed triangle circumcenter
+        quicksort(ids, coords, 0, ids.length - 1, center.x, center.y);
 
-        // recursively flip triangles from the point until they satisfy the Delaunay condition
-        e.t = this._legalize(t + 2);
-        if (e.prev.prev.t === halfedges[t + 1]) {
-            e.prev.prev.t = t + 2;
-        }
+        // initialize a hash table for storing edges of the advancing convex hull
+        this._hashSize = Math.ceil(Math.sqrt(n));
+        this._hash = [];
+        for (i = 0; i < this._hashSize; i++) this._hash[i] = null;
 
-        // walk forward through the hull, adding more triangles and flipping recursively
-        var q = e.next;
-        while (area(x, y, q.x, q.y, q.next.x, q.next.y) < 0) {
-            t = this._addTriangle(q.i, i, q.next.i, q.prev.t, -1, q.t);
-            q.prev.t = this._legalize(t + 2);
-            this.hull = removeNode(q);
-            q = q.next;
-        }
-
-        if (walkBack) {
-            // walk backward from the other side, adding more triangles and flipping
-            q = e.prev;
-            while (area(x, y, q.prev.x, q.prev.y, q.x, q.y) < 0) {
-                t = this._addTriangle(q.prev.i, i, q.i, -1, q.t, q.prev.t);
-                this._legalize(t + 2);
-                q.prev.t = t;
-                this.hull = removeNode(q);
-                q = q.prev;
-            }
-        }
-
-        // save the two new edges in the hash table
+        // initialize a circular doubly-linked list that will hold an advancing convex hull
+        var e = this.hull = insertNode(coords, i0);
         this._hashEdge(e);
-        this._hashEdge(e.prev);
-    }
+        e.t = 0;
+        e = insertNode(coords, i1, e);
+        this._hashEdge(e);
+        e.t = 1;
+        e = insertNode(coords, i2, e);
+        this._hashEdge(e);
+        e.t = 2;
 
-    // trim typed triangle mesh arrays
-    this.triangles = triangles.subarray(0, this.trianglesLen);
-    this.halfedges = halfedges.subarray(0, this.trianglesLen);
-}
+        var maxTriangles = 2 * n - 5;
+        var triangles = this.triangles = new Uint32Array(maxTriangles * 3);
+        var halfedges = this.halfedges = new Int32Array(maxTriangles * 3);
 
-Delaunator.prototype = {
+        this.trianglesLen = 0;
 
-    _hashEdge: function (e) {
-        this._hash[this._hashKey(e.x, e.y)] = e;
-    },
+        this._addTriangle(i0, i1, i2, -1, -1, -1);
 
-    _hashKey: function (x, y) {
-        var dx = x - this._cx;
-        var dy = y - this._cy;
-        // use pseudo-angle: a measure that monotonically increases
-        // with real angle, but doesn't require expensive trigonometry
-        var p = 1 - dx / (Math.abs(dx) + Math.abs(dy));
-        return Math.floor((2 + (dy < 0 ? -p : p)) / 4 * this._hashSize);
-    },
+        var xp, yp;
+        for (var k = 0; k < ids.length; k++) {
+            i = ids[k];
+            x = coords[2 * i];
+            y = coords[2 * i + 1];
 
-    _legalize: function (a) {
-        var triangles = this.triangles;
-        var coords = this.coords;
-        var halfedges = this.halfedges;
+            // skip duplicate points
+            if (x === xp && y === yp) continue;
+            xp = x;
+            yp = y;
 
-        var b = halfedges[a];
+            // skip seed triangle points
+            if ((x === i0x && y === i0y) ||
+                (x === i1x && y === i1y) ||
+                (x === i2x && y === i2y)) continue;
 
-        var a0 = a - a % 3;
-        var b0 = b - b % 3;
+            // find a visible edge on the convex hull using edge hash
+            var startKey = this._hashKey(x, y);
+            var key = startKey;
+            var start;
+            do {
+                start = this._hash[key];
+                key = (key + 1) % this._hashSize;
+            } while ((!start || start.removed) && key !== startKey);
 
-        var al = a0 + (a + 1) % 3;
-        var ar = a0 + (a + 2) % 3;
-        var br = b0 + (b + 1) % 3;
-        var bl = b0 + (b + 2) % 3;
+            e = start;
+            while (area(x, y, e.x, e.y, e.next.x, e.next.y) >= 0) {
+                e = e.next;
+                if (e === start) {
+                    throw new Error('Something is wrong with the input points.');
+                }
+            }
 
-        var p0 = triangles[ar];
-        var pr = triangles[a];
-        var pl = triangles[al];
-        var p1 = triangles[bl];
+            var walkBack = e === start;
 
-        var illegal = inCircle(
-            coords[2 * p0], coords[2 * p0 + 1],
-            coords[2 * pr], coords[2 * pr + 1],
-            coords[2 * pl], coords[2 * pl + 1],
-            coords[2 * p1], coords[2 * p1 + 1]);
+            // add the first triangle from the point
+            var t = this._addTriangle(e.i, i, e.next.i, -1, -1, e.t);
 
-        if (illegal) {
-            triangles[a] = p1;
-            triangles[b] = p0;
+            e.t = t; // keep track of boundary triangles on the hull
+            e = insertNode(coords, i, e);
 
-            this._link(a, halfedges[bl]);
-            this._link(b, halfedges[ar]);
-            this._link(ar, bl);
+            // recursively flip triangles from the point until they satisfy the Delaunay condition
+            e.t = this._legalize(t + 2);
+            if (e.prev.prev.t === halfedges[t + 1]) {
+                e.prev.prev.t = t + 2;
+            }
 
-            this._legalize(a);
-            return this._legalize(br);
+            // walk forward through the hull, adding more triangles and flipping recursively
+            var q = e.next;
+            while (area(x, y, q.x, q.y, q.next.x, q.next.y) < 0) {
+                t = this._addTriangle(q.i, i, q.next.i, q.prev.t, -1, q.t);
+                q.prev.t = this._legalize(t + 2);
+                this.hull = removeNode(q);
+                q = q.next;
+            }
+
+            if (walkBack) {
+                // walk backward from the other side, adding more triangles and flipping
+                q = e.prev;
+                while (area(x, y, q.prev.x, q.prev.y, q.x, q.y) < 0) {
+                    t = this._addTriangle(q.prev.i, i, q.i, -1, q.t, q.prev.t);
+                    this._legalize(t + 2);
+                    q.prev.t = t;
+                    this.hull = removeNode(q);
+                    q = q.prev;
+                }
+            }
+
+            // save the two new edges in the hash table
+            this._hashEdge(e);
+            this._hashEdge(e.prev);
         }
 
-        return ar;
-    },
-
-    _link: function (a, b) {
-        this.halfedges[a] = b;
-        if (b !== -1) this.halfedges[b] = a;
-    },
-
-    // add a new triangle given vertex indices and adjacent half-edge ids
-    _addTriangle: function (i0, i1, i2, a, b, c) {
-        var t = this.trianglesLen;
-
-        this.triangles[t] = i0;
-        this.triangles[t + 1] = i1;
-        this.triangles[t + 2] = i2;
-
-        this._link(t, a);
-        this._link(t + 1, b);
-        this._link(t + 2, c);
-
-        this.trianglesLen += 3;
-
-        return t;
+        // trim typed triangle mesh arrays
+        this.triangles = triangles.subarray(0, this.trianglesLen);
+        this.halfedges = halfedges.subarray(0, this.trianglesLen);
     }
-};
 
-function dist(ax, ay, bx, by) {
-    var dx = ax - bx;
-    var dy = ay - by;
-    return dx * dx + dy * dy;
-}
+    Delaunator.prototype = {
 
-function area(px, py, qx, qy, rx, ry) {
-    return (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-}
+        _hashEdge: function (e) {
+            this._hash[this._hashKey(e.x, e.y)] = e;
+        },
 
-function inCircle(ax, ay, bx, by, cx, cy, px, py) {
-    ax -= px;
-    ay -= py;
-    bx -= px;
-    by -= py;
-    cx -= px;
-    cy -= py;
+        _hashKey: function (x, y) {
+            var dx = x - this._cx;
+            var dy = y - this._cy;
+            // use pseudo-angle: a measure that monotonically increases
+            // with real angle, but doesn't require expensive trigonometry
+            var p = 1 - dx / (Math.abs(dx) + Math.abs(dy));
+            return Math.floor((2 + (dy < 0 ? -p : p)) / 4 * this._hashSize);
+        },
 
-    var ap = ax * ax + ay * ay;
-    var bp = bx * bx + by * by;
-    var cp = cx * cx + cy * cy;
+        _legalize: function (a) {
+            var triangles = this.triangles;
+            var coords = this.coords;
+            var halfedges = this.halfedges;
 
-    return ax * (by * cp - bp * cy) -
-           ay * (bx * cp - bp * cx) +
-           ap * (bx * cy - by * cx) < 0;
-}
+            var b = halfedges[a];
 
-function circumradius(ax, ay, bx, by, cx, cy) {
-    bx -= ax;
-    by -= ay;
-    cx -= ax;
-    cy -= ay;
+            var a0 = a - a % 3;
+            var b0 = b - b % 3;
 
-    var bl = bx * bx + by * by;
-    var cl = cx * cx + cy * cy;
+            var al = a0 + (a + 1) % 3;
+            var ar = a0 + (a + 2) % 3;
+            var bl = b0 + (b + 2) % 3;
 
-    if (bl === 0 || cl === 0) return Infinity;
+            var p0 = triangles[ar];
+            var pr = triangles[a];
+            var pl = triangles[al];
+            var p1 = triangles[bl];
 
-    var d = bx * cy - by * cx;
-    if (d === 0) return Infinity;
+            var illegal = inCircle(
+                coords[2 * p0], coords[2 * p0 + 1],
+                coords[2 * pr], coords[2 * pr + 1],
+                coords[2 * pl], coords[2 * pl + 1],
+                coords[2 * p1], coords[2 * p1 + 1]);
 
-    var x = (cy * bl - by * cl) * 0.5 / d;
-    var y = (bx * cl - cx * bl) * 0.5 / d;
+            if (illegal) {
+                triangles[a] = p1;
+                triangles[b] = p0;
 
-    return x * x + y * y;
-}
+                this._link(a, halfedges[bl]);
+                this._link(b, halfedges[ar]);
+                this._link(ar, bl);
 
-function circumcenter(ax, ay, bx, by, cx, cy) {
-    bx -= ax;
-    by -= ay;
-    cx -= ax;
-    cy -= ay;
+                var br = b0 + (b + 1) % 3;
 
-    var bl = bx * bx + by * by;
-    var cl = cx * cx + cy * cy;
+                this._legalize(a);
+                return this._legalize(br);
+            }
 
-    var d = bx * cy - by * cx;
+            return ar;
+        },
 
-    var x = (cy * bl - by * cl) * 0.5 / d;
-    var y = (bx * cl - cx * bl) * 0.5 / d;
+        _link: function (a, b) {
+            this.halfedges[a] = b;
+            if (b !== -1) this.halfedges[b] = a;
+        },
 
-    return {
-        x: ax + x,
-        y: ay + y
+        // add a new triangle given vertex indices and adjacent half-edge ids
+        _addTriangle: function (i0, i1, i2, a, b, c) {
+            var t = this.trianglesLen;
+
+            this.triangles[t] = i0;
+            this.triangles[t + 1] = i1;
+            this.triangles[t + 2] = i2;
+
+            this._link(t, a);
+            this._link(t + 1, b);
+            this._link(t + 2, c);
+
+            this.trianglesLen += 3;
+
+            return t;
+        }
     };
-}
 
-// create a new node in a doubly linked list
-function insertNode(coords, i, prev) {
-    var node = {
-        i: i,
-        x: coords[2 * i],
-        y: coords[2 * i + 1],
-        t: 0,
-        prev: null,
-        next: null,
-        removed: false
-    };
-
-    if (!prev) {
-        node.prev = node;
-        node.next = node;
-
-    } else {
-        node.next = prev.next;
-        node.prev = prev;
-        prev.next.prev = node;
-        prev.next = node;
+    function dist(ax, ay, bx, by) {
+        var dx = ax - bx;
+        var dy = ay - by;
+        return dx * dx + dy * dy;
     }
-    return node;
-}
 
-function removeNode(node) {
-    node.prev.next = node.next;
-    node.next.prev = node.prev;
-    node.removed = true;
-    return node.prev;
-}
+    function area(px, py, qx, qy, rx, ry) {
+        return (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+    }
 
-function quicksort(ids, coords, left, right, cx, cy) {
-    var i, j, temp;
+    function inCircle(ax, ay, bx, by, cx, cy, px, py) {
+        ax -= px;
+        ay -= py;
+        bx -= px;
+        by -= py;
+        cx -= px;
+        cy -= py;
 
-    if (right - left <= 20) {
-        for (i = left + 1; i <= right; i++) {
-            temp = ids[i];
-            j = i - 1;
-            while (j >= left && compare(coords, ids[j], temp, cx, cy) > 0) ids[j + 1] = ids[j--];
-            ids[j + 1] = temp;
-        }
-    } else {
-        var median = (left + right) >> 1;
-        i = left + 1;
-        j = right;
-        swap(ids, median, i);
-        if (compare(coords, ids[left], ids[right], cx, cy) > 0) swap(ids, left, right);
-        if (compare(coords, ids[i], ids[right], cx, cy) > 0) swap(ids, i, right);
-        if (compare(coords, ids[left], ids[i], cx, cy) > 0) swap(ids, left, i);
+        var ap = ax * ax + ay * ay;
+        var bp = bx * bx + by * by;
+        var cp = cx * cx + cy * cy;
 
-        temp = ids[i];
-        while (true) {
-            do i++; while (compare(coords, ids[i], temp, cx, cy) < 0);
-            do j--; while (compare(coords, ids[j], temp, cx, cy) > 0);
-            if (j < i) break;
-            swap(ids, i, j);
-        }
-        ids[left + 1] = ids[j];
-        ids[j] = temp;
+        return ax * (by * cp - bp * cy) -
+               ay * (bx * cp - bp * cx) +
+               ap * (bx * cy - by * cx) < 0;
+    }
 
-        if (right - i + 1 >= j - left) {
-            quicksort(ids, coords, i, right, cx, cy);
-            quicksort(ids, coords, left, j - 1, cx, cy);
+    function circumradius(ax, ay, bx, by, cx, cy) {
+        bx -= ax;
+        by -= ay;
+        cx -= ax;
+        cy -= ay;
+
+        var bl = bx * bx + by * by;
+        var cl = cx * cx + cy * cy;
+
+        if (bl === 0 || cl === 0) return Infinity;
+
+        var d = bx * cy - by * cx;
+        if (d === 0) return Infinity;
+
+        var x = (cy * bl - by * cl) * 0.5 / d;
+        var y = (bx * cl - cx * bl) * 0.5 / d;
+
+        return x * x + y * y;
+    }
+
+    function circumcenter(ax, ay, bx, by, cx, cy) {
+        bx -= ax;
+        by -= ay;
+        cx -= ax;
+        cy -= ay;
+
+        var bl = bx * bx + by * by;
+        var cl = cx * cx + cy * cy;
+
+        var d = bx * cy - by * cx;
+
+        var x = (cy * bl - by * cl) * 0.5 / d;
+        var y = (bx * cl - cx * bl) * 0.5 / d;
+
+        return {
+            x: ax + x,
+            y: ay + y
+        };
+    }
+
+    // create a new node in a doubly linked list
+    function insertNode(coords, i, prev) {
+        var node = {
+            i: i,
+            x: coords[2 * i],
+            y: coords[2 * i + 1],
+            t: 0,
+            prev: null,
+            next: null,
+            removed: false
+        };
+
+        if (!prev) {
+            node.prev = node;
+            node.next = node;
+
         } else {
-            quicksort(ids, coords, left, j - 1, cx, cy);
-            quicksort(ids, coords, i, right, cx, cy);
+            node.next = prev.next;
+            node.prev = prev;
+            prev.next.prev = node;
+            prev.next = node;
+        }
+        return node;
+    }
+
+    function removeNode(node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+        node.removed = true;
+        return node.prev;
+    }
+
+    function quicksort(ids, coords, left, right, cx, cy) {
+        var i, j, temp;
+
+        if (right - left <= 20) {
+            for (i = left + 1; i <= right; i++) {
+                temp = ids[i];
+                j = i - 1;
+                while (j >= left && compare(coords, ids[j], temp, cx, cy) > 0) ids[j + 1] = ids[j--];
+                ids[j + 1] = temp;
+            }
+        } else {
+            var median = (left + right) >> 1;
+            i = left + 1;
+            j = right;
+            swap(ids, median, i);
+            if (compare(coords, ids[left], ids[right], cx, cy) > 0) swap(ids, left, right);
+            if (compare(coords, ids[i], ids[right], cx, cy) > 0) swap(ids, i, right);
+            if (compare(coords, ids[left], ids[i], cx, cy) > 0) swap(ids, left, i);
+
+            temp = ids[i];
+            while (true) {
+                do i++; while (compare(coords, ids[i], temp, cx, cy) < 0);
+                do j--; while (compare(coords, ids[j], temp, cx, cy) > 0);
+                if (j < i) break;
+                swap(ids, i, j);
+            }
+            ids[left + 1] = ids[j];
+            ids[j] = temp;
+
+            if (right - i + 1 >= j - left) {
+                quicksort(ids, coords, i, right, cx, cy);
+                quicksort(ids, coords, left, j - 1, cx, cy);
+            } else {
+                quicksort(ids, coords, left, j - 1, cx, cy);
+                quicksort(ids, coords, i, right, cx, cy);
+            }
         }
     }
-}
 
-function compare(coords, i, j, cx, cy) {
-    var d1 = dist(coords[2 * i], coords[2 * i + 1], cx, cy);
-    var d2 = dist(coords[2 * j], coords[2 * j + 1], cx, cy);
-    return (d1 - d2) || (coords[2 * i] - coords[2 * j]) || (coords[2 * i + 1] - coords[2 * j + 1]);
-}
+    function compare(coords, i, j, cx, cy) {
+        var d1 = dist(coords[2 * i], coords[2 * i + 1], cx, cy);
+        var d2 = dist(coords[2 * j], coords[2 * j + 1], cx, cy);
+        return (d1 - d2) || (coords[2 * i] - coords[2 * j]) || (coords[2 * i + 1] - coords[2 * j + 1]);
+    }
 
-function swap(arr, i, j) {
-    var tmp = arr[i];
-    arr[i] = arr[j];
-    arr[j] = tmp;
-}
+    function swap(arr, i, j) {
+        var tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
 
-function defaultGetX(p) {
-    return p[0];
-}
-function defaultGetY(p) {
-    return p[1];
-}
+    function defaultGetX(p) {
+        return p[0];
+    }
+    function defaultGetY(p) {
+        return p[1];
+    }
+
+    return Delaunator;
+
+})));
 
 },{}],5:[function(require,module,exports){
 "use strict"

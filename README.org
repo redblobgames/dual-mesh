@@ -20,6 +20,21 @@ For convenience, they also return the array, so this works:
 let out_r = mesh.t_circulate_r([], t);
 #+end_src
 
+To create a mesh, use the =MeshBuilder=:
+
+#+begin_src js
+let mesh = new MeshBuilder()
+    .addPoints(array_of_points)
+    .create();
+#+end_src
+
+#+begin_src js
+let Poisson = require('poisson-disk-sampling');
+let mesh = new MeshBuilder({boundarySpacing: 75})
+    .addPoisson(Poisson, 75)
+    .create();
+#+end_src
+
 ** Built with
 
 - [[https://github.com/mapbox/delaunator][delaunator]] to build the Delaunay triangulation

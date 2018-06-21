@@ -8,33 +8,17 @@
 
 let fs = require('fs');
 let tape = require('tape');
+let Delaunator = require('delaunator');
+let Poisson = require('poisson-disk-sampling');
 let TriangleMesh = require('./');
-let createMesh = require('./create');
-let serializeMesh = require('./serialize');
-let deserializeMesh = require('./deserialize');
-
-tape("encoding and decoding", function(test) {
-    // Mesh spacing 5.0 lets me test the case of numRegions < (1<<16)
-    // and numSides > (1<<16), which makes the two arrays different sizes
-    let meshIn = createMesh({spacing: 5.0});
-    let meshOut = new TriangleMesh(deserializeMesh(serializeMesh(meshIn)));
-    test.equal(meshIn.numBoundaryRegions, meshOut.numBoundaryRegions);
-    test.equal(meshIn.numSolidSides, meshOut.numSolidSides);
-    test.deepEqual(meshIn.sides, meshOut.sides);
-    test.deepEqual(meshIn._halfedges, meshOut._halfedges);
-    // Floats don't survive the round trip because I write them as float32 instead of doubles;
-    // I'm testing just a subset of them to reduce noise from tape
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 2; j++) {
-            test.ok(Math.abs(meshIn._r_vertex[i][j] - meshOut.r_pos([], i)[j]) < 0.01);
-        }
-    }
-    test.end();
-});
+let MeshBuilder = require('./create');
 
 
 tape("structural invariants", function(test) {
-    let mesh = new TriangleMesh(createMesh({spacing: 450.0}));
+    let mesh = new MeshBuilder({boundarySpacing: 450})
+        .addPoisson(Poisson, 450)
+        .create(true);
+    
     let s_out = [];
     for (let s1 = 0; s1 < mesh.numSides; s1++) {
         let s2 = mesh.s_opposite_s(s1);
@@ -59,8 +43,6 @@ tape("structural invariants", function(test) {
 });
 
 
-let Delaunator = require('delaunator');
-let Poisson = require('poisson-disk-sampling');
 
 tape("delaunator: properly connected halfedges", function(t) {
     let points = [[122,270],[181,121],[195,852],[204,694],[273,525],[280,355],[31,946],[319,938],[33,625],[344,93],[369,793],[38,18],[426,539],[454,239],[503,51],[506,997],[516,661],[532,386],[619,889],[689,131],[730,511],[747,750],[760,285],[856,83],[88,479],[884,943],[927,696],[960,472],[992,253]];
