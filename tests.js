@@ -6,7 +6,6 @@
 
 'use strict';
 
-let fs = require('fs');
 let tape = require('tape');
 let Delaunator = require('delaunator');
 let Poisson = require('poisson-disk-sampling');
@@ -25,6 +24,7 @@ tape("structural invariants", function(test) {
         test.equal(mesh.s_opposite_s(s2), s1);
         test.equal(mesh.s_begin_r(s1), mesh.s_end_r(s2));
         test.equal(mesh.s_inner_t(s1), mesh.s_outer_t(s2));
+        test.equal(mesh.s_begin_r(mesh.s_next_s(s1)), mesh.s_begin_r(s2));
     }
     for (let r = 0; r < mesh.numRegions; r++) {
         mesh.r_circulate_s(s_out, r);

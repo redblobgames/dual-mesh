@@ -39,8 +39,8 @@
  */
 class TriangleMesh {
     static s_to_t(s)   { return (s/3) | 0; }
-    static s_prev_s(s) { return (s % 3 == 0) ? s+2 : s-1; }
-    static s_next_s(s) { return (s % 3 == 2) ? s-2 : s+1; }
+    static s_prev_s(s) { return (s % 3 === 0) ? s+2 : s-1; }
+    static s_next_s(s) { return (s % 3 === 2) ? s-2 : s+1; }
 
     /**
      * constructor takes partial mesh information and fills in the rest; the
@@ -57,9 +57,12 @@ class TriangleMesh {
         this.numSolidTriangles = this.numSolidSides / 3;
         
         // Construct an index for finding sides connected to a region
-        this._r_any_s = new Int32Array(this.numRegions);
+        this._r_in_s = new Int32Array(this.numRegions);
         for (let s = 0; s < _triangles.length; s++) {
-            this._r_any_s[_triangles[s]] = this._r_any_s[_triangles[s]] || s;
+            let endpoint = _triangles[TriangleMesh.s_next_s(s)];
+            if (this._r_in_s[endpoint] === 0 || _halfedges[s] === -1) {
+                this._r_in_s[endpoint] = s;
+            }
         }
 
         // Construct triangle coordinates
@@ -71,7 +74,9 @@ class TriangleMesh {
             if (this.s_ghost(s)) {
                 // ghost triangle center is just outside the unpaired side
                 let dx = b[0]-a[0], dy = b[1]-a[1];
-                this._t_vertex[s/3] = [a[0] + 0.5*(dx+dy), a[1] + 0.5*(dy-dx)];
+                let scale = 10 / Math.sqrt(dx*dx + dy*dy); // go 10units away from side
+                this._t_vertex[s/3] = [0.5 * (a[0] + b[0]) + dy*scale,
+                                       0.5 * (a[1] + b[1]) - dx*scale];
             } else {
                 // solid triangle center is at the centroid
                 this._t_vertex[s/3] = [(a[0] + b[0] + c[0])/3,
@@ -103,43 +108,46 @@ class TriangleMesh {
     t_circulate_t(out_t, t) { out_t.length = 3; for (let i = 0; i < 3; i++) { out_t[i] = this.s_outer_t(3*t+i); } return out_t; }
     
     r_circulate_s(out_s, r) {
-        const s0 = this._r_any_s[r];
-        let s = s0;
+        const s0 = this._r_in_s[r];
+        let incoming = s0;
         out_s.length = 0;
         do {
-            out_s.push(s);
-            s = TriangleMesh.s_next_s(this._halfedges[s]);
-        } while (s != s0);
+            out_s.push(this._halfedges[incoming]);
+            let outgoing = TriangleMesh.s_next_s(incoming);
+            incoming = this._halfedges[outgoing];
+        } while (incoming !== -1 && incoming !== s0);
         return out_s;
     }
 
     r_circulate_r(out_r, r) {
-        const s0 = this._r_any_s[r];
-        let s = s0;
+        const s0 = this._r_in_s[r];
+        let incoming = s0;
         out_r.length = 0;
         do {
-            out_r.push(this.s_end_r(s));
-            s = TriangleMesh.s_next_s(this._halfedges[s]);
-        } while (s != s0);
+            out_r.push(this.s_begin_r(incoming));
+            let outgoing = TriangleMesh.s_next_s(incoming);
+            incoming = this._halfedges[outgoing];
+        } while (incoming !== -1 && incoming !== s0);
         return out_r;
     }
     
     r_circulate_t(out_t, r) {
-        const s0 = this._r_any_s[r];
-        let s = s0;
+        const s0 = this._r_in_s[r];
+        let incoming = s0;
         out_t.length = 0;
         do {
-            out_t.push(TriangleMesh.s_to_t(s));
-            s = TriangleMesh.s_next_s(this._halfedges[s]);
-        } while (s != s0);
+            out_t.push(TriangleMesh.s_to_t(incoming));
+            let outgoing = TriangleMesh.s_next_s(incoming);
+            incoming = this._halfedges[outgoing];
+        } while (incoming !== -1 && incoming !== s0);
         return out_t;
     }
 
     ghost_r()     { return this.numRegions - 1; }
     s_ghost(s)    { return s >= this.numSolidSides; }
-    r_ghost(r)    { return r == this.numRegions - 1; }
+    r_ghost(r)    { return r === this.numRegions - 1; }
     t_ghost(t)    { return this.s_ghost(3 * t); }
-    s_boundary(s) { return this.s_ghost(s) && (s % 3 == 0); }
+    s_boundary(s) { return this.s_ghost(s) && (s % 3 === 0); }
     r_boundary(r) { return r < this.numBoundaryRegions; }
 }
 

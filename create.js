@@ -20,7 +20,7 @@ function checkPointInequality({_r_vertex, _triangles, _halfedges}) {
     // TODO: check for collinear vertices. Around each red point P if
     // there's a point Q and R both connected to it, and the angle P→Q and
     // the angle P→R are 180° apart, then there's collinearity. This would
-    // indicate an issue with poisson disc point selection.
+    // indicate an issue with point selection.
 }
 
 
@@ -105,7 +105,6 @@ function addGhostStructure({_r_vertex, _triangles, _halfedges}) {
     
     let numUnpairedSides = 0, firstUnpairedEdge = -1;
     let r_unpaired_s = []; // seed to side
-    // TODO: get these from the delaunator hull
     for (let s = 0; s < numSolidSides; s++) {
         if (_halfedges[s] === -1) {
             numUnpairedSides++;
@@ -183,10 +182,23 @@ class MeshBuilder {
 
     /** Points should be [x, y] */
     addPoints(newPoints) {
-        this.points.push.apply(this.points, newPoints);
+        for (let p of newPoints) {
+            this.points.push(p);
+        }
         return this;
     }
 
+    /** Points will be [x, y] */
+    getNonBoundaryPoints() {
+        return this.points.slice(this.numBoundaryRegions);
+    }
+    
+    /** (used for more advanced mixing of different mesh types) */
+    clearNonBoundaryPoints() {
+        this.points.splice(this.numBoundaryRegions, this.points.length);
+        return this;
+    }
+    
     /** Pass in the constructor from the poisson-disk-sampling module */
     addPoisson(Poisson, spacing, random=Math.random) {
         let generator = new Poisson([1000, 1000], spacing, undefined, undefined, random);
