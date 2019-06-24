@@ -1,17 +1,23 @@
 {
     "name": "@redblobgames/dual-mesh",
-    "version": "2.0.0",
+    "license": "Apache-2.0",
+    "version": "2.1.0",
     "private": true,
     "main": "./index.js",
+    "browser": "dist/dual-mesh.js",
     "types": "./index.d.ts",
     "dependencies": {
-        "delaunator": "^3.0.0"
+        "delaunator": "^4.0.0"
     },
     "devDependencies": {
+        "rollup": "^1.0.0",
+        "rollup-plugin-commonjs": "^9.2.0",
+        "rollup-plugin-node-resolve": "^4.0.0",
         "poisson-disk-sampling": "*",
         "tape": "*"
     },
     "scripts": {
+        "build": "rollup -c",
         "test": "node tests.js",
         "docs": "watchify docs/diagrams.js -o docs/_bundle.js"
     }

@@ -1,6 +1,8 @@
 declare class TriangleMesh {
-    constructor(partialMesh:any);
-
+    constructor(partialMesh: any);
+    static fromDelaunator(points: number[][], delaunator: any);
+    update(points: number[], delaunator: any);
+    
     numSides: number;
     numSolidSides: number;
     numRegions: number;

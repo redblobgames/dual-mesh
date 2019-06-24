@@ -31,11 +31,12 @@
  *
  * Each side will have a pair, accessed with s_opposite_s.
  *
- * The mesh has no boundaries; it wraps around the "back" using a
- * "ghost" region. Some regions are marked as the boundary; these are
- * connected to the ghost region. Ghost triangles and ghost sides
- * connect these boundary regions to the ghost region. Elements that
- * aren't "ghost" are called "solid".
+ * If created using the functions in create.js, the mesh has no
+ * boundaries; it wraps around the "back" using a "ghost" region. Some
+ * regions are marked as the boundary; these are connected to the
+ * ghost region. Ghost triangles and ghost sides connect these
+ * boundary regions to the ghost region. Elements that aren't "ghost"
+ * are called "solid".
  */
 class TriangleMesh {
     static s_to_t(s)   { return (s/3) | 0; }
@@ -43,18 +44,52 @@ class TriangleMesh {
     static s_next_s(s) { return (s % 3 === 2) ? s-2 : s+1; }
 
     /**
-     * constructor takes partial mesh information and fills in the rest; the
-     * partial information is generated in create.js or in deserialize.js
+     * Constructor takes partial mesh information and fills in the rest; the
+     * partial information is generated in create.js or in fromDelaunator.
      */
     constructor ({numBoundaryRegions, numSolidSides, _r_vertex, _triangles, _halfedges}) {
         Object.assign(this, {numBoundaryRegions, numSolidSides,
                              _r_vertex, _triangles, _halfedges});
+        this._t_vertex = [];
+        this._update();
+    }
+
+    /**
+     * Update internal data structures from Delaunator 
+     */
+    update(points, delaunator) {
+        this._r_vertex = points;
+        this._triangles = delaunator.triangles;
+        this._halfedges = delaunator.halfedges;
+        this._update();
+    }
+
+    /**
+     * Update internal data structures to match the input mesh.
+     *
+     * Use if you have updated the triangles/halfedges with Delaunator
+     * and want the dual mesh to match the updated data. Note that
+     * this DOES not update boundary regions or ghost elements.
+     */
+    _update() {
+        let {_triangles, _halfedges, _r_vertex, _t_vertex} = this;
 
         this.numSides = _triangles.length;
         this.numRegions = _r_vertex.length;
-        this.numSolidRegions = this.numRegions - 1;
+        this.numSolidRegions = this.numRegions - 1; // TODO: only if there are ghosts
         this.numTriangles = this.numSides / 3;
         this.numSolidTriangles = this.numSolidSides / 3;
+
+        if (this._t_vertex.length < this.numTriangles) {
+            // Extend this array to be big enough
+            const numOldTriangles = _t_vertex.length;
+            const numNewTriangles = this.numTriangles - numOldTriangles;
+            _t_vertex = _t_vertex.concat(new Array(numNewTriangles));
+            for (let t = numOldTriangles; t < this.numTriangles; t++) {
+                _t_vertex[t] = [0, 0];
+            }
+            this._t_vertex = _t_vertex;
+        }
         
         // Construct an index for finding sides connected to a region
         this._r_in_s = new Int32Array(this.numRegions);
@@ -66,24 +101,39 @@ class TriangleMesh {
         }
 
         // Construct triangle coordinates
-        this._t_vertex = new Array(this.numTriangles);
         for (let s = 0; s < _triangles.length; s += 3) {
-            let a = _r_vertex[_triangles[s]],
+            let t = s/3,
+                a = _r_vertex[_triangles[s]],
                 b = _r_vertex[_triangles[s+1]],
                 c = _r_vertex[_triangles[s+2]];
             if (this.s_ghost(s)) {
                 // ghost triangle center is just outside the unpaired side
                 let dx = b[0]-a[0], dy = b[1]-a[1];
                 let scale = 10 / Math.sqrt(dx*dx + dy*dy); // go 10units away from side
-                this._t_vertex[s/3] = [0.5 * (a[0] + b[0]) + dy*scale,
-                                       0.5 * (a[1] + b[1]) - dx*scale];
+                _t_vertex[t][0] = 0.5 * (a[0] + b[0]) + dy*scale;
+                _t_vertex[t][1] = 0.5 * (a[1] + b[1]) - dx*scale;
             } else {
                 // solid triangle center is at the centroid
-                this._t_vertex[s/3] = [(a[0] + b[0] + c[0])/3,
-                                     (a[1] + b[1] + c[1])/3];
+                _t_vertex[t][0] = (a[0] + b[0] + c[0])/3;
+                _t_vertex[t][1] = (a[1] + b[1] + c[1])/3;
             }
         }
     }
+
+    /**
+     * Construct a DualMesh from a Delaunator object, without any
+     * additional boundary regions.
+     */
+    static fromDelaunator(points, delaunator) {
+        return new TriangleMesh({
+            numBoundaryRegions: 0,
+            numSolidSides: delaunator.triangles.length,
+            _r_vertex: points,
+            _triangles: delaunator.triangles,
+            _halfedges: delaunator.halfedges,
+        });
+    }
+
 
     r_x(r)        { return this._r_vertex[r][0]; }
     r_y(r)        { return this._r_vertex[r][1]; }
