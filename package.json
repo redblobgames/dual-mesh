@@ -1,10 +1,9 @@
 {
     "name": "@redblobgames/dual-mesh",
     "license": "Apache-2.0",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "private": true,
     "main": "./index.js",
-    "browser": "dist/dual-mesh.js",
     "types": "./index.d.ts",
     "dependencies": {
         "delaunator": "^4.0.0"
