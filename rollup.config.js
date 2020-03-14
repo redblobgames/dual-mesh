@@ -1,7 +1,7 @@
 /* based on https://github.com/rollup/rollup-starter-lib/blob/master/rollup.config.js */
 
-import resolve from 'rollup-plugin-node-resolve';
-import commonjs from 'rollup-plugin-commonjs';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 import pkg from './package.json';
 
 export default [

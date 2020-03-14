@@ -9,14 +9,14 @@
         "delaunator": "^4.0.0"
     },
     "devDependencies": {
-        "rollup": "^1.0.0",
-        "rollup-plugin-commonjs": "^9.2.0",
-        "rollup-plugin-node-resolve": "^4.0.0",
+        "@rollup/plugin-commonjs": "^11",
+        "@rollup/plugin-node-resolve": "^7",
         "poisson-disk-sampling": "*",
+        "rollup": "^1.0.0",
         "tape": "*"
     },
     "scripts": {
-        "build": "rollup -c",
+        "build": "rollup -c >dist/dual-mesh.js",
         "test": "node tests.js",
         "docs": "watchify docs/diagrams.js -o docs/_bundle.js"
     }
