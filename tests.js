@@ -62,7 +62,7 @@ tape("delaunator: properly connected halfedges, random set", function(test) {
     // NOTE: this is not a great test because the input data is
     // different each time; need to switch to a deterministic random
     // number generator
-    let generator = new Poisson([1000, 1000], 50.0);
+    let generator = new Poisson({shape: [1000, 1000], minDistance: 50.0});
     let points = generator.fill();
     let delaunator = Delaunator.from(points);
     for (let e1 = 0; e1 < delaunator.halfedges.length; e1++) {
