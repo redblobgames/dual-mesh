@@ -12,7 +12,7 @@
         "@rollup/plugin-commonjs": "^11",
         "@rollup/plugin-node-resolve": "^7",
         "poisson-disk-sampling": "^2",
-        "rollup": "^1.0.0",
+        "rollup": "^3.29.5",
         "tape": "*"
     },
     "scripts": {
