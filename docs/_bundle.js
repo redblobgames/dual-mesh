@@ -221,9 +221,9 @@
     }
   });
 
-  // node_modules/delaunator/delaunator.js
+  // node_modules/.pnpm/delaunator@4.0.1/node_modules/delaunator/delaunator.js
   var require_delaunator = __commonJS({
-    "node_modules/delaunator/delaunator.js"(exports, module) {
+    "node_modules/.pnpm/delaunator@4.0.1/node_modules/delaunator/delaunator.js"(exports, module) {
       (function(global, factory) {
         typeof exports === "object" && typeof module !== "undefined" ? module.exports = factory() : typeof define === "function" && define.amd ? define(factory) : (global = global || self, global.Delaunator = factory());
       })(exports, function() {
@@ -805,9 +805,9 @@
     }
   });
 
-  // node_modules/poisson-disk-sampling/src/tiny-ndarray.js
+  // node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/tiny-ndarray.js
   var require_tiny_ndarray = __commonJS({
-    "node_modules/poisson-disk-sampling/src/tiny-ndarray.js"(exports, module) {
+    "node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/tiny-ndarray.js"(exports, module) {
       "use strict";
       function tinyNDArrayOfInteger(gridShape) {
         var dimensions = gridShape.length, totalLength = 1, stride = new Array(dimensions), dimension;
@@ -841,9 +841,9 @@
     }
   });
 
-  // node_modules/poisson-disk-sampling/src/sphere-random.js
+  // node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/sphere-random.js
   var require_sphere_random = __commonJS({
-    "node_modules/poisson-disk-sampling/src/sphere-random.js"(exports, module) {
+    "node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/sphere-random.js"(exports, module) {
       "use strict";
       module.exports = sampleSphere;
       function sampleSphere(d, rng) {
@@ -870,9 +870,9 @@
     }
   });
 
-  // node_modules/moore/index.js
+  // node_modules/.pnpm/moore@1.0.0/node_modules/moore/index.js
   var require_moore = __commonJS({
-    "node_modules/moore/index.js"(exports, module) {
+    "node_modules/.pnpm/moore@1.0.0/node_modules/moore/index.js"(exports, module) {
       module.exports = function moore(range, dimensions) {
         range = range || 1;
         dimensions = dimensions || 2;
@@ -893,9 +893,9 @@
     }
   });
 
-  // node_modules/poisson-disk-sampling/src/neighbourhood.js
+  // node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/neighbourhood.js
   var require_neighbourhood = __commonJS({
-    "node_modules/poisson-disk-sampling/src/neighbourhood.js"(exports, module) {
+    "node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/neighbourhood.js"(exports, module) {
       "use strict";
       var moore = require_moore();
       function getNeighbourhood(dimensionNumber) {
@@ -938,9 +938,9 @@
     }
   });
 
-  // node_modules/poisson-disk-sampling/src/implementations/fixed-density.js
+  // node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/implementations/fixed-density.js
   var require_fixed_density = __commonJS({
-    "node_modules/poisson-disk-sampling/src/implementations/fixed-density.js"(exports, module) {
+    "node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/implementations/fixed-density.js"(exports, module) {
       "use strict";
       var tinyNDArray = require_tiny_ndarray().integer;
       var sphereRandom = require_sphere_random();
@@ -952,7 +952,6 @@
         }
         return result;
       }
-      var epsilon = 2e-14;
       function FixedDensityPDS(options, rng) {
         if (typeof options.distanceFunction === "function") {
           throw new Error("PoissonDiskSampling: Tried to instantiate the fixed density implementation with a distanceFunction");
@@ -962,9 +961,15 @@
         this.maxDistance = options.maxDistance || options.minDistance * 2;
         this.maxTries = Math.ceil(Math.max(1, options.tries || 30));
         this.rng = rng || Math.random;
+        var maxShape = 0;
+        for (var i = 0; i < this.shape.length; i++) {
+          maxShape = Math.max(maxShape, this.shape[i]);
+        }
+        var floatPrecisionMitigation = Math.max(1, maxShape / 128 | 0);
+        var epsilonDistance = 1e-14 * floatPrecisionMitigation;
         this.dimension = this.shape.length;
         this.squaredMinDistance = this.minDistance * this.minDistance;
-        this.minDistancePlusEpsilon = this.minDistance + epsilon;
+        this.minDistancePlusEpsilon = this.minDistance + epsilonDistance;
         this.deltaDistance = Math.max(0, this.maxDistance - this.minDistancePlusEpsilon);
         this.cellSize = this.minDistance / Math.sqrt(this.dimension);
         this.neighbourhood = getNeighbourhood(this.dimension);
@@ -1004,7 +1009,7 @@
         var dimension, valid = true;
         if (point.length === this.dimension) {
           for (dimension = 0; dimension < this.dimension && valid; dimension++) {
-            valid = point[dimension] >= 0 && point[dimension] <= this.shape[dimension];
+            valid = point[dimension] >= 0 && point[dimension] < this.shape[dimension];
           }
         } else {
           valid = false;
@@ -1102,9 +1107,9 @@
     }
   });
 
-  // node_modules/poisson-disk-sampling/src/implementations/variable-density.js
+  // node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/implementations/variable-density.js
   var require_variable_density = __commonJS({
-    "node_modules/poisson-disk-sampling/src/implementations/variable-density.js"(exports, module) {
+    "node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/implementations/variable-density.js"(exports, module) {
       "use strict";
       var tinyNDArray = require_tiny_ndarray().array;
       var sphereRandom = require_sphere_random();
@@ -1116,7 +1121,6 @@
         }
         return Math.sqrt(result);
       }
-      var epsilon = 2e-14;
       function VariableDensityPDS(options, rng) {
         if (typeof options.distanceFunction !== "function") {
           throw new Error("PoissonDiskSampling: Tried to instantiate the variable density implementation without a distanceFunction");
@@ -1128,8 +1132,14 @@
         this.distanceFunction = options.distanceFunction;
         this.bias = Math.max(0, Math.min(1, options.bias || 0));
         this.rng = rng || Math.random;
+        var maxShape = 0;
+        for (var i = 0; i < this.shape.length; i++) {
+          maxShape = Math.max(maxShape, this.shape[i]);
+        }
+        var floatPrecisionMitigation = Math.max(1, maxShape / 128 | 0);
+        var epsilonDistance = 1e-14 * floatPrecisionMitigation;
         this.dimension = this.shape.length;
-        this.minDistancePlusEpsilon = this.minDistance + epsilon;
+        this.minDistancePlusEpsilon = this.minDistance + epsilonDistance;
         this.deltaDistance = Math.max(0, this.maxDistance - this.minDistancePlusEpsilon);
         this.cellSize = this.maxDistance / Math.sqrt(this.dimension);
         this.neighbourhood = getNeighbourhood(this.dimension);
@@ -1174,7 +1184,7 @@
         var dimension, valid = true;
         if (point.length === this.dimension) {
           for (dimension = 0; dimension < this.dimension && valid; dimension++) {
-            valid = point[dimension] >= 0 && point[dimension] <= this.shape[dimension];
+            valid = point[dimension] >= 0 && point[dimension] < this.shape[dimension];
           }
         } else {
           valid = false;
@@ -1292,9 +1302,9 @@
     }
   });
 
-  // node_modules/poisson-disk-sampling/src/poisson-disk-sampling.js
+  // node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/poisson-disk-sampling.js
   var require_poisson_disk_sampling = __commonJS({
-    "node_modules/poisson-disk-sampling/src/poisson-disk-sampling.js"(exports, module) {
+    "node_modules/.pnpm/poisson-disk-sampling@2.3.1/node_modules/poisson-disk-sampling/src/poisson-disk-sampling.js"(exports, module) {
       "use strict";
       var FixedDensityPDS = require_fixed_density();
       var VariableDensityPDS = require_variable_density();

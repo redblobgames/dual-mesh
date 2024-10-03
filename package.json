@@ -14,6 +14,6 @@
     },
     "scripts": {
         "test": "node tests.js",
-        "docs": "esbuild --bundle docs/diagrams.js >docs/_bundle.js"
+        "generate-docs": "esbuild --bundle docs/diagrams.js >docs/_bundle.js"
     }
 }
